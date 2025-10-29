@@ -5,6 +5,7 @@ import logging
 import os
 
 from rtue_worker_thread import rtue
+from oai_ue_worker_thread import oai_ue
 from jammer_worker_thread import jammer
 from sniffer_worker_thread import sniffer
 from decoder_worker_thread import decoder

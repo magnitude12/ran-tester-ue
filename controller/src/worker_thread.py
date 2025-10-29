@@ -187,7 +187,8 @@ class WorkerThread:
                 logging.info(f"Docker container stopped and removed: {self.docker_container.name}")
             except docker.errors.APIError as e:
                 logging.error(f"Failed to stop Docker container: {e}")
-        self.stop_thread.set()
+        if hasattr(self, "stop_thread"):
+            self.stop_thread.set()
 
     def get_status(self):
         self.docker_container.reload()

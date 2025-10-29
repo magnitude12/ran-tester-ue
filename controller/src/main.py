@@ -17,6 +17,7 @@ import logging
 import signal
 
 from rtue_worker_thread import rtue
+from oai_ue_worker_thread import oai_ue
 from jammer_worker_thread import jammer
 from sniffer_worker_thread import sniffer
 from decoder_worker_thread import decoder
@@ -34,7 +35,7 @@ from globals import Config, Globals
 def handle_signal(signum, frame):
     for process_meta in Globals.process_metadata:
         process_meta["handle"].stop()
-        logging.debug(f"Killed process {process['id']}")
+        logging.debug(f"Killed process {process_meta['id']}")
     sys.exit(0)
 
 signal.signal(signal.SIGINT, handle_signal)
@@ -114,24 +115,27 @@ def start_subprocess_threads():
         if "type" not in process_config.keys():
             raise RuntimeError("type field required for each process")
 
-        if "config_file" not in process_config.keys():
-            raise RuntimeError("config_file field required for each process")
+        # config_file is optional for some process types (e.g., oai_ue which uses CLI args only)
+        if "config_file" in process_config.keys():
+            process_config["config_file"] = os.path.join("/host",process_config["config_file"])
+            if not os.path.exists(process_config["config_file"]):
+                logging.warning(f"File {process_config['config_file']} not found searching root")
+                config_basename = process_config["config_file"].split("/")[-1]
+                found = False
+                for root, _, files in os.walk("/host"):
+                    if config_basename in files:
+                        process_config["config_file"] = os.path.join(root, config_basename)
+                        logging.info(f"Found config file {process_config['config_file']}")
+                        found = True
+                        break
+                if not found:
+                    raise RuntimeError(f"config file {process_config['config_file']} not found")
+            process_config["config_file"] = process_config["config_file"].replace("/host", os.getenv("DOCKER_SYSTEM_DIRECTORY"))
+            logging.debug(f"Filename on host {process_config['config_file']}")
+        else:
+            logging.debug(f"Process {process_config['id']} does not require a config file")
+            process_config["config_file"] = ""
 
-        process_config["config_file"] = os.path.join("/host",process_config["config_file"])
-        if not os.path.exists(process_config["config_file"]):
-            logging.warning(f"File {process_config['config_file']} not found searching root")
-            config_basename = process_config["config_file"].split("/")[-1]
-            found = False
-            for root, _, files in os.walk("/host"):
-                if config_basename in files:
-                    process_config["config_file"] = os.path.join(root, config_basename)
-                    logging.info(f"Found config file {process_config['config_file']}")
-                    found = True
-                    break
-            if not found:
-                raise RuntimeError(f"config file {process_config['config_file']} not found")
-        process_config["config_file"] = process_config["config_file"].replace("/host", os.getenv("DOCKER_SYSTEM_DIRECTORY"))
-        logging.debug(f"Filename on host {process_config['config_file']}")
 
 
         if "depends_on" in process_config.keys():

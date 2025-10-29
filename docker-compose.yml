@@ -91,7 +91,6 @@ services:
     profiles:
       - components
 
-
   jammer:
     image: ghcr.io/oran-testing/jammer
     build:
@@ -157,6 +156,23 @@ services:
     network_mode: host
     profiles:
       - components
+
+  oai_ue:
+    image: ghcr.io/oran-testing/oai_ue
+    container_name: oai_ue
+    privileged: true
+    network_mode: host
+    volumes:
+      - /usr/share/uhd/images:/usr/share/uhd/images
+      - /dev/bus/usb:/dev/bus/usb
+    build:
+      context: ./oai_integration
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    profiles:
+      - components
+      - oai
 
 configs:
   controller.yml:
