@@ -174,6 +174,22 @@ services:
       - components
       - oai
 
+  ssb-spoofer:
+    image: ghcr.io/oran-testing/ssb-spoofer
+    container_name: ssb-spoofer
+    privileged: true
+    network_mode: host
+    volumes:
+      - /usr/share/uhd/images:/usr/share/uhd/images
+      - /dev/bus/usb:/dev/bus/usb
+    build:
+      context: ./ssb-spoofer
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    profiles:
+      - components
+
 configs:
   controller.yml:
     file: ${DOCKER_CONTROLLER_INIT_CONFIG:-configs/multi_ue_uhd.yaml}
