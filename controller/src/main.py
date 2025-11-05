@@ -25,6 +25,7 @@ from llm_worker_thread import llm_worker
 from rach_worker_thread import rach_agent
 from uu_agent_worker_thread import uu_agent
 from ofh_worker_thread import ofh_attacker
+from ssb_spoofer_worker_thread import ssb_spoofer
 
 from influxdb_client import InfluxDBClient, WriteApi
 
