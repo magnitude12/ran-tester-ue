@@ -1,7 +1,7 @@
 processes:
   - id: spoofer_1
     type: ssb_spoofer
-    config_file: configs/spoofer_config.yaml
+    config_file: ssb-spoofer/config.yaml
     rf:
       type: b200
       images_dir: /usr/share/uhd/images
