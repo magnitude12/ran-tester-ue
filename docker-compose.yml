@@ -115,18 +115,6 @@ services:
     profiles:
       - components
 
-  sniffer:
-    image: ghcr.io/oran-testing/5g-sniffer
-    build:
-      context: ./5g-sniffer/
-      dockerfile: Dockerfile.alpine
-    depends_on:
-      - components_base
-    env_file:
-      - .env
-    profiles:
-      - components
-
   llm_worker:
     image: ghcr.io/oran-testing/llm_worker
     env_file:
