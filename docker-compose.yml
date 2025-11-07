@@ -91,7 +91,6 @@ services:
     profiles:
       - components
 
-
   jammer:
     image: ghcr.io/oran-testing/jammer
     build:
@@ -155,6 +154,39 @@ services:
     env_file:
       - .env
     network_mode: host
+    profiles:
+      - components
+
+  oai_ue:
+    image: ghcr.io/oran-testing/oai_ue
+    container_name: oai_ue
+    privileged: true
+    network_mode: host
+    volumes:
+      - /usr/share/uhd/images:/usr/share/uhd/images
+      - /dev/bus/usb:/dev/bus/usb
+    build:
+      context: ./oai_integration
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    profiles:
+      - components
+      - oai
+
+  ssb-spoofer:
+    image: ghcr.io/oran-testing/ssb-spoofer
+    container_name: ssb-spoofer
+    privileged: true
+    network_mode: host
+    volumes:
+      - /usr/share/uhd/images:/usr/share/uhd/images
+      - /dev/bus/usb:/dev/bus/usb
+    build:
+      context: ./ssb-spoofer
+      dockerfile: Dockerfile
+    env_file:
+      - .env
     profiles:
       - components
 

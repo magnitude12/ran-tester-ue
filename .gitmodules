@@ -11,3 +11,9 @@
 [submodule "rtue"]
 	path = rtue
 	url = https://github.com/oran-testing/rtue
+[submodule "oai_integration"]
+	path = oai_integration
+	url = https://github.com/cueltschey/oai_integration
+[submodule "ssb-spoofer"]
+	path = ssb-spoofer
+	url = https://github.com/aevyy/SSB-Spoofer.git
