@@ -1,4 +1,3 @@
-force_build: true
 build_spec:
   - component: "sni5gect"
     docker_image: "ghcr.io/oran-testing/sni5gect"
