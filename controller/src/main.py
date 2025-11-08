@@ -65,25 +65,30 @@ def configure():
         yaml_options = yaml.safe_load(file)
 
     if yaml_options is None:
-        raise RuntimeError("YAML parsing failed")
+        logging.critical("YAML parsing failed")
+        sys.exit(1)
 
     return yaml_options
 
 def start_server():
     if os.geteuid() != 0:
-        raise RuntimeError("User must be root") 
+        logging.critical("User must be root")
+        sys.exit(1) 
 
     control_ip = os.getenv("DOCKER_CONTROLLER_API_IP", None)
     if not control_ip:
-        raise RuntimeError("environment variable DOCKER_CONTROLLER_API_IP not set")
+        logging.critical("environment variable DOCKER_CONTROLLER_API_IP not set")
+        sys.exit(1)
 
     control_port = os.getenv("DOCKER_CONTROLLER_API_PORT", None)
     if not control_port:
-        raise RuntimeError("environment variable DOCKER_CONTROLLER_API_PORT not set")
+        logging.critical("environment variable DOCKER_CONTROLLER_API_PORT not set")
+        sys.exit(1)
     try:
         control_port = int(control_port)
     except RuntimeError:
-        raise RuntimeError("DOCKER_CONTROLLER_API_PORT is not a valid integer")
+        logging.critical("DOCKER_CONTROLLER_API_PORT is not a valid integer")
+        sys.exit(1)
 
     logging.info(f"Starting control server at: http://{control_ip}:{control_port}")
     server = http.server.HTTPServer((control_ip, control_port), SystemControlHandler)
@@ -101,11 +106,13 @@ if __name__ == '__main__':
 
     build_config = yaml_config.get("build_spec", None)
     if build_config is None:
-        raise RuntimeError("No components supplied in YAML config")
+        logging.critical("No components supplied in YAML config")
+        sys.exit(1)
 
     threads_config = yaml_config.get("run_spec", None)
     if threads_config is None:
-        raise RuntimeError("No processes supplied in YAML config")
+        logging.critical("No processes supplied in YAML config")
+        sys.exit(1)
 
     Globals.thread_manager = ComponentManager()
 

@@ -1,4 +1,5 @@
 import time
+import sys
 import docker
 import os
 import importlib.util
@@ -33,7 +34,8 @@ class ComponentManager:
         influxdb_token = os.getenv("DOCKER_INFLUXDB_INIT_ADMIN_TOKEN")
 
         if not influxdb_host or not influxdb_port or not influxdb_org or not influxdb_token:
-            raise RuntimeError("Influxdb environment is not complete! Ensure .env is configured and passed properly")
+            logging.critical("Influxdb environment is not complete! Ensure .env is configured and passed properly")
+            sys.exit(1)
 
         self.influxdb_client = InfluxDBClient(
             f"http://{influxdb_host}:{influxdb_port}",
@@ -48,11 +50,13 @@ class ComponentManager:
     def build(self, component):
         docker_image = component.get("docker_image")
         if docker_image is None:
-            raise RuntimeError("docker_image required in build_spec")
+            logging.critical("docker_image required in build_spec")
+            sys.exit(1)
 
         component_name = component.get("component")
         if component_name is None:
-            raise RuntimeError("component required in build_spec")
+            logging.critical("component required in build_spec")
+            sys.exit(1)
 
         try:
             enable_pull = component.get("enable_pull", False)
@@ -81,7 +85,8 @@ class ComponentManager:
     def build_if_not_exists(self, component):
         docker_image = component.get("docker_image")
         if docker_images is None:
-            raise RuntimeError("docker_image required in build_spec")
+            logging.critical("docker_image required in build_spec")
+            sys.exit(1)
 
         try:
             images = self.docker_client.images.list()
@@ -98,10 +103,12 @@ class ComponentManager:
     
     def start(self, process_config):
         if "name" not in process_config.keys():
-            raise RuntimeError("name field required for each process")
+            logging.critical("name field required for each process")
+            sys.exit(1)
 
         if "component" not in process_config.keys():
-            raise RuntimeError("component field required for each process")
+            logging.critical("component field required for each process")
+            sys.exit(1)
 
         # config_file is optional for some process types (e.g., oai_ue which uses CLI args only)
         if "config_file" in process_config.keys():

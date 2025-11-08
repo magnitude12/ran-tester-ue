@@ -1,5 +1,6 @@
 from worker_thread import WorkerThread
 import secrets
+import sys
 import os
 from docker.types import DeviceRequest
 
@@ -11,7 +12,8 @@ class llm_worker(WorkerThread):
     def start(self):
         results_dir = self.config.process_config.get("results_dir", None)
         if not results_dir:
-            raise RuntimeError("Failed to start llm_worker: required field results_dir is missing")
+            logging.critical("Failed to start llm_worker: required field results_dir is missing")
+            sys.exit(1)
 
         self.config.image_name = "ghcr.io/oran-testing/llm_worker"
         self.cleanup_old_containers()

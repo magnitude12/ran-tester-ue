@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import hashlib
 import configparser
 import logging
@@ -55,7 +56,8 @@ class WorkerThread:
         if "name" in process_config.keys():
             self.config.container_id = process_config["name"]
         else:
-            raise RuntimeError("Process id is required")
+            logging.critical("Process id is required")
+            sys.exit(1)
 
         if "args" in process_config.keys():
             self.config.cli_args = process_config["args"]
@@ -199,7 +201,8 @@ class WorkerThread:
         self.log_thread.start()
 
     def start(self):
-        raise RuntimeError("start behavior must be defined by individual worker class")
+        logging.critical("start behavior must be defined by individual worker class")
+        sys.exit(1)
 
     def stop(self):
         """
