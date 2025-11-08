@@ -1,0 +1,21 @@
+FROM ghcr.io/oran-testing/components_base
+
+WORKDIR /jammer
+
+COPY CMakeLists.txt .
+COPY hdr hdr
+COPY src src
+COPY cmake cmake
+
+RUN mkdir -p /jammer/build && rm -rf /jammer/build/*
+
+WORKDIR /jammer/build
+
+RUN cmake ../ && \
+    make -j$(nproc) && \
+    make install
+
+WORKDIR /jammer
+
+CMD [ "sh", "-c", "/usr/local/bin/jammer --config /jammer.yaml $ARGS" ]
+
