@@ -51,8 +51,8 @@ class WorkerThread:
         if "config_file" in process_config.keys():
             self.config.config_file = process_config["config_file"]
 
-        if "id" in process_config.keys():
-            self.config.container_id = process_config["id"]
+        if "name" in process_config.keys():
+            self.config.container_id = process_config["name"]
         else:
             raise RuntimeError("Process id is required")
 
