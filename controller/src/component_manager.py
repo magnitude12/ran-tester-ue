@@ -25,7 +25,7 @@ class ComponentManager:
                     globals()[name] = obj
                     if name == "WorkerThread":
                         continue
-                    logging.debug(f"Loaded worker thread module: {name}")
+                    logging.info(f"Loaded worker thread module: {name}")
 
         influxdb_host = os.getenv("DOCKER_INFLUXDB_INIT_HOST")
         influxdb_port = os.getenv("DOCKER_INFLUXDB_INIT_PORT")
@@ -57,10 +57,10 @@ class ComponentManager:
         try:
             enable_pull = component.get("enable_pull", False)
             if enable_pull:
-                logging.debug(f"Pulling Docker image: {docker_image}")
+                logging.info(f"Pulling Docker image: {docker_image}")
                 self.docker_client.images.pull(docker_image)
             else:
-                logging.debug(f"Building Docker image: {docker_image}")
+                logging.info(f"Building Docker image: {docker_image}")
                 dockerfile_path = os.path.join("/host/dockerfiles", f"Dockerfile.{component_name}")
 
                 # Check if the Dockerfile exists
@@ -68,7 +68,7 @@ class ComponentManager:
                     raise RuntimeError(f"Dockerfile {dockerfile_path} does not exist")
 
                 # Build the Docker image from the Dockerfile
-                logging.debug(f"Building Docker image from: {dockerfile_path}")
+                logging.info(f"Building Docker image from: {dockerfile_path}")
 
                 # The context for building the image (the parent directory of the Dockerfile)
                 build_context = os.path.dirname(dockerfile_path)
@@ -137,7 +137,7 @@ class ComponentManager:
                     raise RuntimeError(f"Did not find dependent process '{dependency}' for '{process_config['name']}'")
 
         if "sleep_ms" in process_config.keys():
-            logging.debug(f"Sleeping for {process_config['sleep_ms']}")
+            logging.warning(f"Sleeping for {process_config['sleep_ms']/1000.0} seconds")
             sleep_time = float(process_config["sleep_ms"])/1000.0
             time.sleep(sleep_time)
 
@@ -172,34 +172,29 @@ class ComponentManager:
             "docker", "buildx", "build",
             "--file", dockerfile_path,
             "--tag", docker_image,
-            "--progress", "plain",  # Log in plain text format for easier reading
+            "--progress", "plain",
             build_context
         ]
 
-        logging.debug(f"Running command: {' '.join(buildx_command)}")
+        logging.info(f"Running command: {' '.join(buildx_command)}")
 
-        # Open a subprocess with live output
         try:
             process = subprocess.Popen(buildx_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-            # Stream both stdout and stderr line-by-line as they come
             for stdout_line in iter(process.stdout.readline, ""):
-                logging.info(stdout_line.strip())  # Print each line of stdout
+                logging.debug(stdout_line.strip())
             for stderr_line in iter(process.stderr.readline, ""):
-                logging.error(stderr_line.strip())  # Print each line of stderr
+                logging.debug(stderr_line.strip())
 
             process.stdout.close()
             process.stderr.close()
 
-            # Wait for the process to finish and get the return code
             return_code = process.wait()
 
             if return_code != 0:
-                logging.error(f"Buildx build failed with exit code {return_code}")
                 raise RuntimeError(f"Buildx build failed with exit code {return_code}")
 
             logging.info("Buildx build completed successfully.")
 
         except subprocess.CalledProcessError as e:
-            logging.error(f"Buildx build failed with error: {e.stderr}")
             raise RuntimeError(f"Buildx build failed: {e.stderr}")

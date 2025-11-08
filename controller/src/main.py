@@ -7,6 +7,7 @@ import argparse
 import pathlib
 import yaml
 import logging
+import colorlog
 
 from datetime import datetime, timezone
 
@@ -19,7 +20,7 @@ from globals import Globals
 def configure():
     """
     Reads in CLI arguments
-    Configures log level
+    Configures log level with colored output
     Returns YAML config
     """
     script_dir = pathlib.Path(__file__).resolve().parent
@@ -31,17 +32,33 @@ def configure():
         required=True,
         help="Path of YAML config for the controller")
     parser.add_argument("--log-level",
-                    default="DEBUG",
-                    help="Set the logging level. Options: DEBUG, INFO, WARNING, ERROR, CRITICAL")
+                        default="DEBUG",
+                        help="Set the logging level. Options: DEBUG, INFO, WARNING, ERROR, CRITICAL")
     args = parser.parse_args()
     log_level = getattr(logging, args.log_level.upper(), 1)
 
     if not isinstance(log_level, int):
         raise ValueError(f"Invalid log level: {args.log_level}")
 
-    logging.basicConfig(level=log_level,
-                    format='%(levelname)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
+    console_handler = logging.StreamHandler()
+
+    color_formatter = colorlog.ColoredFormatter(
+        '%(log_color)s%(levelname)-8s%(reset)s - %(message)s', 
+        reset=True,
+        log_colors={
+            'DEBUG': 'cyan',
+            'INFO': 'green',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'bold_red',
+        }
+    )
+
+    console_handler.setFormatter(color_formatter)
+
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+    logger.addHandler(console_handler)
 
     yaml_options = None
     with open(str(args.config), 'r') as file:

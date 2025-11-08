@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import configparser
 import logging
 import os
@@ -252,7 +253,12 @@ class WorkerThread:
                         "time": formatted_timestamp,
                     },
                 )
-                logging.debug(f"[{self.config.container_id}]: {message_text}")
+ 
+                color_code = int(hashlib.md5(self.config.container_id.encode()).hexdigest(), 16) % 8 + 30
+                tag_color = f"\033[{color_code}m"
+
+                logging.debug(f"{tag_color}[{self.config.container_id}]\033[0m: {message_text}")
+                # logging.debug(f"[{self.config.container_id}]: {message_text}")
             except Exception as e:
                 logging.error(f"send_message failed with error: {e}")
 
