@@ -9,6 +9,7 @@ RUN apk add --no-cache \
     iperf3 \
     iproute2 \
     docker-cli \
+    docker-cli-buildx \
     gcc
 
 WORKDIR /app

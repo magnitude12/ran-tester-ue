@@ -4,6 +4,7 @@ import os
 import importlib.util
 import inspect
 import logging
+import subprocess
 
 from influxdb_client import InfluxDBClient, WriteApi
 
@@ -72,14 +73,7 @@ class ComponentManager:
                 # The context for building the image (the parent directory of the Dockerfile)
                 build_context = os.path.dirname(dockerfile_path)
 
-                # Build the image
-                for line in self.docker_client.api.build(path=build_context, dockerfile=dockerfile_path,
-                                                         tag=docker_image, rm=True, decode=True):
-                    if 'stream' in line:
-                        logging.info(line['stream'].strip())  # Print the build log
-
-                logging.debug(f"Build completed for Docker image: {docker_image}")
-
+                self._run_buildx_build(docker_image, dockerfile_path, build_context)
 
         except Exception as e:
             raise RuntimeError(f"Error while building component {component['component']}: {str(e)}")
@@ -173,3 +167,39 @@ class ComponentManager:
 
         process_handle.start()
 
+    def _run_buildx_build(self, docker_image, dockerfile_path, build_context):
+        buildx_command = [
+            "docker", "buildx", "build",
+            "--file", dockerfile_path,
+            "--tag", docker_image,
+            "--progress", "plain",  # Log in plain text format for easier reading
+            build_context
+        ]
+
+        logging.debug(f"Running command: {' '.join(buildx_command)}")
+
+        # Open a subprocess with live output
+        try:
+            process = subprocess.Popen(buildx_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            # Stream both stdout and stderr line-by-line as they come
+            for stdout_line in iter(process.stdout.readline, ""):
+                logging.info(stdout_line.strip())  # Print each line of stdout
+            for stderr_line in iter(process.stderr.readline, ""):
+                logging.error(stderr_line.strip())  # Print each line of stderr
+
+            process.stdout.close()
+            process.stderr.close()
+
+            # Wait for the process to finish and get the return code
+            return_code = process.wait()
+
+            if return_code != 0:
+                logging.error(f"Buildx build failed with exit code {return_code}")
+                raise RuntimeError(f"Buildx build failed with exit code {return_code}")
+
+            logging.info("Buildx build completed successfully.")
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Buildx build failed with error: {e.stderr}")
+            raise RuntimeError(f"Buildx build failed: {e.stderr}")
