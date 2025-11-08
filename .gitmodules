@@ -14,3 +14,6 @@
 [submodule "ssb-spoofer"]
 	path = ssb-spoofer
 	url = https://github.com/aevyy/SSB-Spoofer.git
+[submodule "sni5gect-compact"]
+	path = sni5gect-compact
+	url = https://github.com/cueltschey/sni5gect-compact.git

@@ -7,7 +7,7 @@ import os
 from rtue_worker_thread import rtue
 from oai_ue_worker_thread import oai_ue
 from jammer_worker_thread import jammer
-from sniffer_worker_thread import sniffer
+from sni5gect_worker_thread import sni5gect
 from decoder_worker_thread import decoder
 from llm_worker_thread import llm_worker
 from rach_worker_thread import rach_agent

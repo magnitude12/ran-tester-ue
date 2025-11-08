@@ -1,6 +1,6 @@
 processes:
-  - type: "jammer"
-    id: "jammer_1"
-    config_file: "jammer/configs/basic_jammer.yaml"
+  - type: "sni5gect"
+    id: "sni_1"
+    config_file: "configs/sni5gect/srsgnb_band3.yaml"
     rf:
       type: "b200"

@@ -147,29 +147,19 @@ services:
 
   oai_ue:
     image: ghcr.io/oran-testing/oai_ue
-    container_name: oai_ue
-    privileged: true
-    network_mode: host
-    volumes:
-      - /usr/share/uhd/images:/usr/share/uhd/images
-      - /dev/bus/usb:/dev/bus/usb
     build:
       context: ./oai_integration
       dockerfile: Dockerfile
+    privileged: true
+    network_mode: host
     env_file:
       - .env
     profiles:
       - components
-      - oai
 
   ssb-spoofer:
     image: ghcr.io/oran-testing/ssb-spoofer
-    container_name: ssb-spoofer
     privileged: true
-    network_mode: host
-    volumes:
-      - /usr/share/uhd/images:/usr/share/uhd/images
-      - /dev/bus/usb:/dev/bus/usb
     build:
       context: ./ssb-spoofer
       dockerfile: Dockerfile
@@ -177,6 +167,13 @@ services:
       - .env
     profiles:
       - components
+
+  sni5gect:
+    image: ghcr.io/oran-testing/sni5gect
+    build:
+      context: ./sni5gect-compact
+      dockerfile: Dockerfile
+    privileged: true
 
 configs:
   controller.yml:
@@ -190,6 +187,7 @@ volumes:
 networks:
   default:
     driver: bridge
+
   metrics:
     name: rt_metrics
     ipam:
