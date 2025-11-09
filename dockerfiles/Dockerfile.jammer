@@ -1,13 +1,8 @@
 FROM ghcr.io/oran-testing/components_base
 
-WORKDIR /jammer
+RUN git clone https://github.com/oran-testing/jammer /jammer
 
-COPY CMakeLists.txt .
-COPY hdr hdr
-COPY src src
-COPY cmake cmake
-
-RUN mkdir -p /jammer/build && rm -rf /jammer/build/*
+RUN mkdir -p /jammer/build
 
 WORKDIR /jammer/build
 
