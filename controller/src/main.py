@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     yaml_config = configure()
 
-    for target_config in yaml_config.get("external_targets"):
+    for target_config in yaml_config.get("external_targets", []):
         target_name = target_config.get("name", None)
         target_host = target_config.get("host", None)
         target_token = target_config.get("token", None)
@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     Globals.api_auth = yaml_config.get("api_auth", [])
     for i in range(len(Globals.api_auth)):
-        if Globals.api_auth.get("token") is None:
+        if Globals.api_auth[i].get("token") is None:
             Globals.api_auth[i]["token"] = uuid.uuid4()
 
     external_influx_config = yaml_config.get("external_influx", None)

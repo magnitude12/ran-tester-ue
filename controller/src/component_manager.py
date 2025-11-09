@@ -247,8 +247,17 @@ class ComponentManager:
             logging.critical(f"External target with name: {process_config.get("target")} not found")
             return
 
-        # TODO: fill in payload
-        external_target.make_request("start", payload={})
+        config_str = ""
+        if has_config:
+            with open(process_config["config_file"], 'r') as f:
+                config_str = f.read()
+
+        external_target.make_request("start", payload={
+            "id": process_config["name"],
+            "type": process_config["component"],
+            "config_str": config_str,
+            "rf": process_config["rf"],
+            })
 
         self.process_metadata.append({
             'id': process_config['name'],
