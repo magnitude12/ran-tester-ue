@@ -11,7 +11,7 @@ from influxdb_client import InfluxDBClient, WriteApi
 
 
 class ComponentManager:
-    def __init__(self):
+    def __init__(self, external_influx=None):
 
         for worker_thread_file in [f for f in os.listdir("worker_threads") if f.endswith('.py') and f != '__init__.py']:
             module_name = worker_thread_file[:-3]
@@ -28,6 +28,32 @@ class ComponentManager:
                         continue
                     logging.info(f"Loaded worker thread module: {name}")
 
+        if external_influx is None:
+            self.configure_influxdb_local()
+        else:
+            self.configure_influxdb_external(external_influx)
+
+        self.docker_client = docker.from_env()
+
+        self.process_metadata = []
+
+    def configure_influxdb_external(self, external_influx):
+        influxdb_host = external_influx.get("host", None)
+        influxdb_port = external_influx.get("port", None)
+        influxdb_org = external_influx.get("org", None)
+        influxdb_token = external_influx.get("token", None)
+
+        if not influxdb_host or not influxdb_port or not influxdb_org or not influxdb_token:
+            logging.critical("external_influx configuration is not complete! Ensure host, port, org and token are supplied")
+            sys.exit(1)
+
+        self.influxdb_client = InfluxDBClient(
+            f"http://{influxdb_host}:{influxdb_port}",
+            org=influxdb_org,
+            token=influxdb_token
+        )
+
+    def configure_influxdb_local(self):
         influxdb_host = os.getenv("DOCKER_INFLUXDB_INIT_HOST")
         influxdb_port = os.getenv("DOCKER_INFLUXDB_INIT_PORT")
         influxdb_org = os.getenv("DOCKER_INFLUXDB_INIT_ORG")
@@ -42,10 +68,6 @@ class ComponentManager:
             org=influxdb_org,
             token=influxdb_token
         )
-
-        self.docker_client = docker.from_env()
-
-        self.process_metadata = []
 
     def build(self, component):
         docker_image = component.get("docker_image")
@@ -84,7 +106,7 @@ class ComponentManager:
 
     def build_if_not_exists(self, component):
         docker_image = component.get("docker_image")
-        if docker_images is None:
+        if docker_image is None:
             logging.critical("docker_image required in build_spec")
             sys.exit(1)
 
@@ -104,11 +126,11 @@ class ComponentManager:
     def start(self, process_config):
         if "name" not in process_config.keys():
             logging.critical("name field required for each process")
-            sys.exit(1)
+            return
 
         if "component" not in process_config.keys():
             logging.critical("component field required for each process")
-            sys.exit(1)
+            return
 
         # config_file is optional for some process types (e.g., oai_ue which uses CLI args only)
         if "config_file" in process_config.keys():
@@ -124,9 +146,79 @@ class ComponentManager:
                         found = True
                         break
                 if not found:
-                    raise RuntimeError(f"config file {process_config['config_file']} not found")
+                    logging.critical(f"config file {process_config['config_file']} not found")
+                    return
             process_config["config_file"] = process_config["config_file"].replace("/host", os.getenv("DOCKER_SYSTEM_DIRECTORY"))
             logging.debug(f"Filename on host {process_config['config_file']}")
+        else:
+            logging.debug(f"Process {process_config['name']} does not require a config file")
+            process_config["config_file"] = ""
+
+
+
+        if "depends_on" in process_config.keys():
+            depends_on_list = list(process_config["depends_on"])
+            for dependency in depends_on_list:
+                found_dep = False
+                for process_data in self.process_metadata:
+                    if process_data["name"] == dependency:
+                        found_dep = True
+                if not found_dep:
+                    logging.critical(f"Did not find dependent process '{dependency}' for '{process_config['name']}'")
+                    return
+
+        if "sleep_ms" in process_config.keys():
+            logging.warning(f"Sleeping for {process_config['sleep_ms']/1000.0} seconds")
+            sleep_time = float(process_config["sleep_ms"])/1000.0
+            time.sleep(sleep_time)
+
+
+        process_class = None
+        try:
+            process_class = globals()[process_config["component"]]
+        except KeyError:
+            logging.critical(f"Invalid component {process_config['component']}")
+            return
+
+        process_handle = process_class(self.influxdb_client, self.docker_client, process_config)
+
+        self.process_metadata.append({
+            'id': process_config['name'],
+            'type': process_config['component'],
+            'config': process_config,
+            'handle': process_handle,
+        })
+
+        process_handle.start()
+
+    def start_external(self, process_config):
+        if "name" not in process_config.keys():
+            logging.critical("name field required for each process")
+            return
+
+        if "component" not in process_config.keys():
+            logging.critical("component field required for each process")
+            return
+
+        has_config = False
+        # config_file is optional for some process types (e.g., oai_ue which uses CLI args only)
+        if "config_file" in process_config.keys():
+            process_config["config_file"] = os.path.join("/host",process_config["config_file"])
+            if not os.path.exists(process_config["config_file"]):
+                logging.warning(f"File {process_config['config_file']} not found searching root")
+                config_basename = process_config["config_file"].split("/")[-1]
+                found = False
+                for root, _, files in os.walk("/host"):
+                    if config_basename in files:
+                        process_config["config_file"] = os.path.join(root, config_basename)
+                        logging.info(f"Found config file {process_config['config_file']}")
+                        found = True
+                        break
+                if not found:
+                    logging.critical(f"config file {process_config['config_file']} not found")
+                    return
+
+            has_config = True
         else:
             logging.debug(f"Process {process_config['name']} does not require a config file")
             process_config["config_file"] = ""
@@ -148,31 +240,21 @@ class ComponentManager:
             sleep_time = float(process_config["sleep_ms"])/1000.0
             time.sleep(sleep_time)
 
-        permissions = []
-        if "permissions" in process_config.keys():
-            permissions = process_config["permissions"]
-        process_config["permissions"] = permissions
 
-        process_class = None
-        try:
-            process_class = globals()[process_config["component"]]
-        except KeyError:
-            raise RuntimeError(f"Invalid component {process_config['component']}")
+        external_target = Globals.target_managers.get(process_config.get("target"), None)
+        if external_target is None:
+            logging.critical(f"External target with name: {process_config.get("target")} not found")
+            return
 
-        process_handle = process_class(self.influxdb_client, self.docker_client, process_config)
-        process_token = None
-        if hasattr(process_handle, "get_token"):
-            process_token = process_handle.get_token()
+        # TODO: fill in payload
+        external_target.make_request("start", payload={})
 
         self.process_metadata.append({
             'id': process_config['name'],
             'type': process_config['component'],
             'config': process_config,
-            'handle': process_handle,
-            'token': {process_token: permissions}
+            'handle': None,
         })
-
-        process_handle.start()
 
     def _run_buildx_build(self, docker_image, dockerfile_path, build_context):
         buildx_command = [

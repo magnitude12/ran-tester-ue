@@ -26,21 +26,13 @@ from knowledge_augmentor import KnowledgeAugmentor
 def configure():
     if os.geteuid() != 0:
         raise RuntimeError("The LLM worker must be run as root.")
+
     if not torch.cuda.is_available():
         raise RuntimeError("No available GPU in the LLM container")
-    control_ip = os.getenv("CONTROL_IP")
-    if not control_ip:
-        raise RuntimeError("CONTROL_IP is not set in environment")
+
     control_token = os.getenv("CONTROL_TOKEN")
     if not control_token:
         raise RuntimeError("CONTROL_TOKEN is not set in environment")
-    control_port = os.getenv("CONTROL_PORT")
-    if not control_port:
-        raise RuntimeError("CONTROL_PORT is not set in environment")
-    try:
-        control_port = int(control_port)
-    except RuntimeError:
-        raise RuntimeError("control port is not an integer")
 
     results_dir = os.getenv("RESULTS_DIR")
     if not results_dir:
@@ -72,7 +64,7 @@ def configure():
     with open(str(args.config), 'r') as file:
         Config.options = yaml.safe_load(file)
 
-    return control_ip, control_port, control_token
+    return control_token
 
 def run_plan_loop(planner, plan_validator):
     is_successful, is_valid_plan = False, False
@@ -298,7 +290,7 @@ def run_send_step(component: str, control_url: str, auth_header: str):
 
 
 if __name__ == '__main__':
-    api_args = configure()
+    api_token = configure()
 
     Config.model_str = Config.options.get("model", None)
     if not Config.model_str:
@@ -310,7 +302,7 @@ if __name__ == '__main__':
     planner = Planner(llm)
     plan_validator = PlanValidator()
 
-    api = ApiInterface(*api_args)
+    api = ApiInterface("controller", 1343, api_token)
     kb = KnowledgeAugmentor()
 
     finalized_plan = run_plan_loop(planner, plan_validator)

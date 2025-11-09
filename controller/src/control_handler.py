@@ -12,14 +12,12 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         if not auth_header.startswith("Bearer "):
             return False, []
         token = auth_header.removeprefix("Bearer").strip()
-        for process_config in Globals.thread_manager.process_metadata:
-            for existing_tok in process_config["token"].keys():
-                is_valid_token = existing_tok == token
-                if is_valid_token:
-                    permissions = process_config["token"][token]
+        for api in Globals.api_auth:
+            if api.get("token", "") == token:
+                if self.path[1:] in api.get("scopes", []):
+                    is_valid_token = True
+                    permissions = api.get("allowed_components", [])
                     break
-            if is_valid_token:
-                break
         return is_valid_token, permissions
 
     def _set_headers(self, code=200):
@@ -36,15 +34,13 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps({"error":"Endpoint not found"}).encode("utf-8"))
 
     def get_components(self):
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
 
         response_list = []
         for process_config in Globals.thread_manager.process_metadata:
-            if process_config["type"] not in perms:
-                continue
             response_list.append({
                 "id": process_config["id"],
                 "type": process_config["type"],
@@ -55,7 +51,7 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps({"running": response_list}).encode("utf-8"))
 
     def get_component_logs(self):
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
@@ -129,6 +125,11 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": "Missing required fields for rf: type"}).encode("utf-8"))
                 return
 
+        if payload.get("type") not in perms:
+            self._set_headers(403)
+            self.wfile.write(json.dumps({"error":"unauthorized to start that component"}).encode("utf-8"))
+            return
+
         rf_keys = ("type")
         if rf_type == "zmq":
             rf_keys = ("type", "tcp_subnet", "gateway")
@@ -183,7 +184,7 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps({"msg":f"process started: {payload['id']}"}).encode("utf-8"))
 
     def stop_component(self):
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
@@ -204,8 +205,6 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
 
         for i, process_config in enumerate(Globals.thread_manager.process_metadata):
             if process_config["id"] == payload["id"]:
-                if process_config["type"] not in perms:
-                    continue
                 process_config["handle"].stop()
                 self._set_headers()
                 self.wfile.write(json.dumps({"id":process_config["id"]}).encode("utf-8"))
@@ -215,7 +214,7 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps({"error":"Component with ID does not exist"}).encode("utf-8"))
 
     def check_component_health(self):
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
@@ -236,8 +235,6 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
 
         for i, process_config in enumerate(Globals.thread_manager.process_metadata):
             if process_config["id"] == payload["id"]:
-                if process_config["type"] not in perms:
-                    continue
                 self._set_headers()
                 self.wfile.write(json.dumps(process_config["handle"].get_status()).encode("utf-8"))
                 return

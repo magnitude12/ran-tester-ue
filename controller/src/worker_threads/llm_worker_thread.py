@@ -1,4 +1,5 @@
 from worker_thread import WorkerThread
+import logging
 import secrets
 import sys
 import os
@@ -20,16 +21,12 @@ class llm_worker(WorkerThread):
 
         self.config.container_env = {
             "CONFIG": self.config.config_file,
-            "CONTROL_IP": os.getenv("DOCKER_CONTROLLER_API_IP"),
-            "CONTROL_PORT": os.getenv("DOCKER_CONTROLLER_API_PORT"),
-            "CONTROL_TOKEN": self.access_token,
             "RESULTS_DIR": results_dir,
             "NVIDIA_VISIBLE_DEVICES": "all",
             "NVIDIA_DRIVER_CAPABILITIES": "all"
         }
         self.setup_env()
         self.setup_networks()
-        self.config.container_networks.append(self.config.docker_client.networks.get("rt_control"))
 
         self.config.container_volumes[self.config.config_file] = {"bind": "/llm.yaml", "mode": "ro"}
         self.config.container_volumes[f"{os.getenv('DOCKER_SYSTEM_DIRECTORY')}/.llm_worker_cache"] = {"bind": "/app/huggingface_cache", "mode": "rw"}

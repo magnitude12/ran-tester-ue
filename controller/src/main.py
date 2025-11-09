@@ -8,12 +8,14 @@ import pathlib
 import yaml
 import logging
 import colorlog
+import uuid
 
 from datetime import datetime, timezone
 
 
 from control_handler import SystemControlHandler
 from component_manager import ComponentManager
+from api_interface import ApiInterface
 
 from globals import Globals
 
@@ -71,50 +73,45 @@ def configure():
     return yaml_options
 
 def start_server():
-    if os.geteuid() != 0:
-        logging.critical("User must be root")
-        sys.exit(1) 
-
-    control_ip = os.getenv("DOCKER_CONTROLLER_API_IP", None)
-    if not control_ip:
-        logging.critical("environment variable DOCKER_CONTROLLER_API_IP not set")
-        sys.exit(1)
-
-    control_port = os.getenv("DOCKER_CONTROLLER_API_PORT", None)
-    if not control_port:
-        logging.critical("environment variable DOCKER_CONTROLLER_API_PORT not set")
-        sys.exit(1)
-    try:
-        control_port = int(control_port)
-    except RuntimeError:
-        logging.critical("DOCKER_CONTROLLER_API_PORT is not a valid integer")
-        sys.exit(1)
-
-    logging.info(f"Starting control server at: http://{control_ip}:{control_port}")
-    server = http.server.HTTPServer((control_ip, control_port), SystemControlHandler)
+    server = http.server.HTTPServer(("0.0.0.0", 1343), SystemControlHandler)
+    logging.info("Starting control server at: http://controller:1343")
 
     server.serve_forever()
 
 
 if __name__ == '__main__':
+    if os.geteuid() != 0:
+        logging.critical("User must be root")
+        sys.exit(1) 
+
     Globals.controller_init_time = f"{datetime.now().astimezone(timezone.utc)
         .isoformat().replace("+00:00", "Z")}"
 
     yaml_config = configure()
 
+    for target_config in yaml_config.get("external_targets"):
+        target_name = target_config.get("name", None)
+        target_host = target_config.get("host", None)
+        target_token = target_config.get("token", None)
+        target_port = target_config.get("port", None)
+        if target_name is None or target_host is None or target_token is None or not isinstance(target_port, int):
+            logging.warning("Skipping external target due to insufficient configuration")
+            continue
+        Globals.target_managers[target_name] = ApiInterface(target_host, target_port, target_token)
+
+    Globals.api_auth = yaml_config.get("api_auth", [])
+    for i in range(len(Globals.api_auth)):
+        if Globals.api_auth.get("token") is None:
+            Globals.api_auth[i]["token"] = uuid.uuid4()
+
+    external_influx_config = yaml_config.get("external_influx", None)
+    Globals.thread_manager = ComponentManager(external_influx_config)
+
     force_build = yaml_config.get("force_build", False)
 
-    build_config = yaml_config.get("build_spec", None)
-    if build_config is None:
-        logging.critical("No components supplied in YAML config")
-        sys.exit(1)
+    build_config = yaml_config.get("build_spec", [])
 
-    threads_config = yaml_config.get("run_spec", None)
-    if threads_config is None:
-        logging.critical("No processes supplied in YAML config")
-        sys.exit(1)
-
-    Globals.thread_manager = ComponentManager()
+    threads_config = yaml_config.get("run_spec", [])
 
     for b in build_config:
         if force_build:
@@ -123,6 +120,9 @@ if __name__ == '__main__':
             Globals.thread_manager.build_if_not_exists(b)
 
     for t in threads_config:
+        if t.get("target", False):
+            Globals.thread_manager.start_external(t)
+            continue
         Globals.thread_manager.start(t)
 
     start_server()

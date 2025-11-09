@@ -25,14 +25,14 @@ services:
       metrics:
         ipv4_address: 172.19.1.7
       control:
-        ipv4_address: ${DOCKER_CONTROLLER_API_IP:-172.20.1.7}
+        ipv4_address: 172.20.1.7
     configs:
       - controller.yml
     ports:
-      - "9000:9000"
+      # WARNING: Exposes control API
+      - "1343:1343"
     depends_on:
       - influxdb
-
 
   influxdb:
     container_name: influxdb

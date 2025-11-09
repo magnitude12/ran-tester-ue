@@ -16,6 +16,8 @@ from docker.types import IPAMConfig, IPAMPool
 from influxdb_client import InfluxDBClient, WriteApi
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+from globals import Globals
+
 
 class RfType(Enum):
     NONE = 0
@@ -141,6 +143,31 @@ class WorkerThread:
         self.config.container_networks.append(
             self.config.docker_client.networks.get("rt_metrics")
         )
+
+        for api in Globals.api_auth:
+            if self.config.container_id not in api.get("pass_to", []):
+                continue
+
+            api_scopes = api.get("scopes", None)
+            api_allowed_components = api.get("allowed_components", None)
+            api_name = api.get("name", None)
+            api_token = api.get("token", None)
+
+            if api_scopes is None or api_name is None or not isinstance(api_scopes, list) or api_token is None:
+                logging.warning("Skipping API auth due to insufficient configuration")
+                continue
+
+            if "start" in api_scopes and (api_allowed_components is None or not isinstance(api_allowed_components, list)):
+                logging.warning("allowed_components is required when start scope is enabled")
+                continue
+
+            self.config.container_networks.append(
+                self.config.docker_client.networks.get("rt_control")
+            )
+
+            self.config.container_env["CONTROL_TOKEN"] = api_token
+
+
 
         if self.config.rf_type == RfType.ZMQ:
             try:
