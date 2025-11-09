@@ -8,6 +8,7 @@ import logging
 import subprocess
 
 from influxdb_client import InfluxDBClient, WriteApi
+from globals import Globals
 
 
 class ComponentManager:
