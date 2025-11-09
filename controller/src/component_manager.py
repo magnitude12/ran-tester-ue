@@ -252,12 +252,16 @@ class ComponentManager:
             with open(process_config["config_file"], 'r') as f:
                 config_str = f.read()
 
-        external_target.make_request("start", payload={
+        response = external_target.make_request("start", payload={
             "id": process_config["name"],
             "type": process_config["component"],
             "config_str": config_str,
             "rf": process_config["rf"],
-            })
+        })
+
+        logging.debug(f"RF: {process_config['rf']}")
+
+        logging.debug(f"Got reponse from external target: {response}")
 
         self.process_metadata.append({
             'id': process_config['name'],

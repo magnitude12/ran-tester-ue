@@ -130,15 +130,6 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({"error":"unauthorized to start that component"}).encode("utf-8"))
             return
 
-        rf_keys = ("type")
-        if rf_type == "zmq":
-            rf_keys = ("type", "tcp_subnet", "gateway")
-
-        if not all(k in payload["rf"] for k in rf_keys):
-                self._set_headers(400)
-                self.wfile.write(json.dumps({"error": "Missing required fields for rf: type, images_dir"}).encode("utf-8"))
-                return
-
         if any(p["id"] == payload["id"] for p in Globals.thread_manager.process_metadata):
                 self._set_headers(409)
                 self.wfile.write(json.dumps({"error": "ID conflict with existing component"}).encode("utf-8"))
@@ -162,18 +153,10 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({"error":f"Failed to write config to file {config_file}"}))
             return
 
-        process_class = None
-        try:
-            process_class = globals()[payload["type"]]
-        except KeyError:
-            self._set_headers(403)
-            self.wfile.write(json.dumps({"error":f"Invalid process type {payload['type']}"}).encode("utf-8"))
-            return
-
         new_process_config = {
             "config_file": config_file,
-            "id": payload["id"],
-            "type": payload["type"],
+            "name": payload["id"],
+            "component": payload["type"],
             "rf": payload["rf"],
             "permissions": [],
         }
