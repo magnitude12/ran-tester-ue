@@ -9,6 +9,7 @@ import yaml
 import logging
 import colorlog
 import uuid
+import threading
 
 from datetime import datetime, timezone
 
@@ -78,6 +79,41 @@ def start_server():
 
     server.serve_forever()
 
+def cli_loop(yaml_config):
+    logging.info("Starting CLI command thread. Run docker attach controller to access...")
+    while True:
+        try:
+            cmd = input("> ").strip().lower()
+            if cmd in ("exit", "quit"):
+                logging.info("Shutting down...")
+                sys.exit(0)
+            elif cmd == "help":
+                print("Available commands:\n  help - show this message\n  exit - quit program\n  stop - stop all running components\n restart - stop and start all components\n  list - list running components")
+            elif cmd == "list":
+                for i in range(len(Globals.thread_manager.process_metadata)):
+                    logging.info(f"Process {i}: {Globals.thread_manager.process_metadata[i]}")
+            elif cmd == "stop":
+                for i in range(len(Globals.thread_manager.process_metadata)):
+                    logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
+                    Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
+                    del Globals.thread_manager.process_metadata[i]
+            elif cmd == "restart":
+                for i in range(len(Globals.thread_manager.process_metadata)):
+                    logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
+                    Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
+                    del Globals.thread_manager.process_metadata[i]
+
+                for t in threads_config:
+                    if t.get("target", False):
+                        Globals.thread_manager.start_external(t)
+                        continue
+                    Globals.thread_manager.start(t)
+            else:
+                print(f"Unknown command: {cmd}")
+        except (EOFError, KeyboardInterrupt):
+            logging.info("Exiting CLI...")
+            sys.exit(0)
+
 
 if __name__ == '__main__':
     if os.geteuid() != 0:
@@ -125,5 +161,6 @@ if __name__ == '__main__':
             continue
         Globals.thread_manager.start(t)
 
-    start_server()
-
+    server_thread = threading.Thread(target=start_server, daemon=True)
+    server_thread.start()
+    cli_loop(yaml_config)

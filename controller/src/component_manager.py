@@ -259,16 +259,29 @@ class ComponentManager:
             "rf": process_config["rf"],
         })
 
-        logging.debug(f"RF: {process_config['rf']}")
-
         logging.debug(f"Got reponse from external target: {response}")
 
         self.process_metadata.append({
             'id': process_config['name'],
             'type': process_config['component'],
             'config': process_config,
-            'handle': None,
+            'target': process_config.get("target"),
         })
+
+    def stop(self, process_config):
+        process_handle = process_config.get("handle", None)
+        if process_handle:
+            process_handle.stop()
+            return
+
+        process_target = process_config.get("target")
+        external_target = Globals.target_managers.get(process_config.get("target"), None)
+
+        response = external_target.make_request("stop", payload={
+            "id": process_config.get("name"),
+        })
+
+        logging.debug(f"Got reponse from external target: {response}")
 
     def _run_buildx_build(self, docker_image, dockerfile_path, build_context):
         buildx_command = [

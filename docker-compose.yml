@@ -33,6 +33,10 @@ services:
       - "1343:1343"
     depends_on:
       - influxdb
+    tty: true
+    stdin_open: true
+
+
 
   influxdb:
     container_name: influxdb
