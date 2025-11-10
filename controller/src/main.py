@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import time
 import os
 import http
 import sys
@@ -16,6 +17,7 @@ from datetime import datetime, timezone
 
 from control_handler import SystemControlHandler
 from component_manager import ComponentManager
+from cli_manager import CLIManager
 from api_interface import ApiInterface
 
 from globals import Globals
@@ -79,45 +81,6 @@ def start_server():
 
     server.serve_forever()
 
-def cli_loop(yaml_config):
-    logging.info("Starting CLI command thread. Run docker attach controller to access...")
-    while True:
-        try:
-            cmd = input("> ").strip().lower()
-            if cmd in ("exit", "quit"):
-                logging.info("Shutting down...")
-                sys.exit(0)
-            elif cmd == "help":
-                print("Available commands:\n  help - show this message\n  exit - quit program\n  stop - stop all running components\n restart - stop and start all components\n  list - list running components")
-            elif cmd == "list":
-                for i in range(len(Globals.thread_manager.process_metadata)):
-                    logging.info(f"Process {i}: {Globals.thread_manager.process_metadata[i]}")
-            elif cmd == "stop":
-                for i in range(len(Globals.thread_manager.process_metadata)):
-                    logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
-                    Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
-                Globals.thread_manager.process_metadata = []
-            elif cmd == "restart":
-                for i in range(len(Globals.thread_manager.process_metadata)):
-                    logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
-                    Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
-                Globals.thread_manager.process_metadata = []
-
-                for t in threads_config:
-                    if t.get("target", False):
-                        Globals.thread_manager.start_external(t)
-                        continue
-                    Globals.thread_manager.start(t)
-            else:
-                print(f"Unknown command: {cmd}")
-        except (EOFError, KeyboardInterrupt):
-            logging.info("Shutting down controller...")
-            for i in range(len(Globals.thread_manager.process_metadata)):
-                logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
-                Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
-            Globals.thread_manager.process_metadata = []
-            logging.info("Controller exited with code: 0")
-            sys.exit(0)
 
 
 if __name__ == '__main__':
@@ -166,6 +129,11 @@ if __name__ == '__main__':
             continue
         Globals.thread_manager.start(t)
 
-    server_thread = threading.Thread(target=start_server, daemon=True)
-    server_thread.start()
-    cli_loop(yaml_config)
+    if yaml_config.get("enable_cli", False):
+        server_thread = threading.Thread(target=start_server, daemon=True)
+        server_thread.start()
+        time.sleep(1)
+        cli_manager = CLIManager(yaml_config)
+        cli_manager.cli_loop()
+    else:
+        start_server()
