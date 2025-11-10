@@ -278,7 +278,7 @@ class ComponentManager:
         external_target = Globals.target_managers.get(process_config.get("target"), None)
 
         response = external_target.make_request("stop", payload={
-            "id": process_config.get("name"),
+            "id": process_config.get("id"),
         })
 
         logging.debug(f"Got reponse from external target: {response}")

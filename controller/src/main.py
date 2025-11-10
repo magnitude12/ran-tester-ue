@@ -111,7 +111,12 @@ def cli_loop(yaml_config):
             else:
                 print(f"Unknown command: {cmd}")
         except (EOFError, KeyboardInterrupt):
-            logging.info("Exiting CLI...")
+            logging.info("Shutting down controller...")
+            for i in range(len(Globals.thread_manager.process_metadata)):
+                logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
+                Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
+                del Globals.thread_manager.process_metadata[i]
+            logging.info("Controller exited with code: 0")
             sys.exit(0)
 
 
