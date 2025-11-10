@@ -188,9 +188,9 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
 
         for i, process_config in enumerate(Globals.thread_manager.process_metadata):
             if process_config["id"] == payload["id"]:
-                process_config["handle"].stop()
                 self._set_headers()
                 self.wfile.write(json.dumps({"id":process_config["id"]}).encode("utf-8"))
+                process_config["handle"].stop()
                 del Globals.thread_manager.process_metadata[i]
                 return
         self._set_headers(404)
