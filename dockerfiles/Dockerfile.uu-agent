@@ -10,4 +10,4 @@ RUN cmake ../ && \
     make -j$(nproc) && \
     make install
 
-CMD [ "sh", "-c", "/usr/local/bin/uuagent /uu-agent.conf" ]
+CMD [ "sh", "-c", "/usr/local/bin/uuagent --config /uu-agent.conf" ]
