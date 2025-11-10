@@ -96,12 +96,12 @@ def cli_loop(yaml_config):
                 for i in range(len(Globals.thread_manager.process_metadata)):
                     logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
                     Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
-                    del Globals.thread_manager.process_metadata[i]
+                Globals.thread_manager.process_metadata = []
             elif cmd == "restart":
                 for i in range(len(Globals.thread_manager.process_metadata)):
                     logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
                     Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
-                    del Globals.thread_manager.process_metadata[i]
+                Globals.thread_manager.process_metadata = []
 
                 for t in threads_config:
                     if t.get("target", False):
@@ -115,7 +115,7 @@ def cli_loop(yaml_config):
             for i in range(len(Globals.thread_manager.process_metadata)):
                 logging.info(f"Stopping {Globals.thread_manager.process_metadata[i]}")
                 Globals.thread_manager.stop(Globals.thread_manager.process_metadata[i])
-                del Globals.thread_manager.process_metadata[i]
+            Globals.thread_manager.process_metadata = []
             logging.info("Controller exited with code: 0")
             sys.exit(0)
 
