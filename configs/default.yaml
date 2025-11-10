@@ -1,18 +1,27 @@
-external_targets:
-  - name: "sni5gect_runner"
+api_auth:
+  - name: "swarm_master_token"
     token: "testing_token"
-    host: "192.168.0.10"
-    port: 1343
+    scopes:
+      - list
+      - logs
+      - get
+      - healthcheck
+      - start
+      - stop
+    allowed_components:
+      - sni5gect
+      - rtue
+      - jammer
+      - ssb-spoofer
 
-#build_spec:
-#  - component: "sni5gect"
-#    docker_image: "ghcr.io/oran-testing/sni5gect"
-#    pull: false
+external_influx:
+  token: "605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b"
+  org: "rtu"
+  bucket: "rtusystem"
+  port: 8086
+  host: "192.168.0.9" # IP of the master node
 
-run_spec:
+build_spec:
   - component: "sni5gect"
-    name: "sni5gect_uhd_1"
-    config_file: "configs/sni5gect/srsgnb_band3.yaml"
-    rf:
-      type: "b200"
-    target: "sni5gect_runner"
+    docker_image: "ghcr.io/oran-testing/sni5gect"
+    pull: false
