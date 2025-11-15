@@ -5,3 +5,4 @@ venv/
 .generated
 .uhd_images
 .env
+.uuagent_results
