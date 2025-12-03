@@ -123,11 +123,12 @@ if __name__ == '__main__':
         else:
             Globals.thread_manager.build_if_not_exists(b)
 
-    for t in threads_config:
-        if t.get("target", False):
-            Globals.thread_manager.start_external(t)
-            continue
-        Globals.thread_manager.start(t)
+    if yaml_config.get("autorun", True):
+        for t in threads_config:
+            if t.get("target", False):
+                Globals.thread_manager.start_external(t)
+                continue
+            Globals.thread_manager.start(t)
 
     if yaml_config.get("enable_cli", False):
         server_thread = threading.Thread(target=start_server, daemon=True)
