@@ -9,5 +9,5 @@ output_iq_file: "output.fc32"
 output_csv_file: "output.csv"
 write_iq: false
 write_csv: true
-device_args: "type=b200"
+device_args: "type=b200,serial=32BBA37"
 tx_gain: 89.5
