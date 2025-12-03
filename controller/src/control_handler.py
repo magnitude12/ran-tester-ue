@@ -1,18 +1,8 @@
 import json
 import http.server
-from globals import Config, Globals
+from globals import Globals
 import logging
 import os
-
-from rtue_worker_thread import rtue
-from oai_ue_worker_thread import oai_ue
-from jammer_worker_thread import jammer
-from sni5gect_worker_thread import sni5gect
-from decoder_worker_thread import decoder
-from llm_worker_thread import llm_worker
-from rach_worker_thread import rach_agent
-from uu_agent_worker_thread import uu_agent
-from ssb_spoofer_worker_thread import ssb_spoofer
 
 class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
     def _get_permissions(self):
@@ -22,14 +12,12 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         if not auth_header.startswith("Bearer "):
             return False, []
         token = auth_header.removeprefix("Bearer").strip()
-        for process_config in Globals.process_metadata:
-            for existing_tok in process_config["token"].keys():
-                is_valid_token = existing_tok == token
-                if is_valid_token:
-                    permissions = process_config["token"][token]
+        for api in Globals.api_auth:
+            if api.get("token", "") == token:
+                if self.path[1:] in api.get("scopes", []):
+                    is_valid_token = True
+                    permissions = api.get("allowed_components", [])
                     break
-            if is_valid_token:
-                break
         return is_valid_token, permissions
 
     def _set_headers(self, code=200):
@@ -46,16 +34,13 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps({"error":"Endpoint not found"}).encode("utf-8"))
 
     def get_components(self):
-        Globals.process_metadata
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
 
         response_list = []
-        for process_config in Globals.process_metadata:
-            if process_config["type"] not in perms:
-                continue
+        for process_config in Globals.thread_manager.process_metadata:
             response_list.append({
                 "id": process_config["id"],
                 "type": process_config["type"],
@@ -66,7 +51,7 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps({"running": response_list}).encode("utf-8"))
 
     def get_component_logs(self):
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
@@ -97,8 +82,8 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
             |> sort(columns: ["_time"])
         '''
 
-        query_api = Config.influxdb_client.query_api()
-        result = query_api.query(org=Config.influxdb_client.org, query=query)
+        query_api = Globals.thread_manager.influxdb_client.query_api()
+        result = query_api.query(org=Globals.thread_manager.influxdb_client.org, query=query)
 
         logs = []
         for table in result:
@@ -113,7 +98,6 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
 
 
     def start_component(self):
-        Globals.process_metadata
         is_valid_token, perms = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
@@ -141,16 +125,12 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": "Missing required fields for rf: type"}).encode("utf-8"))
                 return
 
-        rf_keys = ("images_dir", "type")
-        if rf_type == "zmq":
-            rf_keys = ("tcp_subnet", "gateway")
+        if payload.get("type") not in perms:
+            self._set_headers(403)
+            self.wfile.write(json.dumps({"error":"unauthorized to start that component"}).encode("utf-8"))
+            return
 
-        if not all(k in payload["rf"] for k in rf_keys):
-                self._set_headers(400)
-                self.wfile.write(json.dumps({"error": "Missing required fields for rf: type, images_dir"}).encode("utf-8"))
-                return
-
-        if any(p["id"] == payload["id"] for p in Globals.process_metadata):
+        if any(p["id"] == payload["id"] for p in Globals.thread_manager.process_metadata):
                 self._set_headers(409)
                 self.wfile.write(json.dumps({"error": "ID conflict with existing component"}).encode("utf-8"))
                 return
@@ -173,44 +153,21 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({"error":f"Failed to write config to file {config_file}"}))
             return
 
-        # NOTE: config path must be translated to the host path
-        config_file = config_file.replace("/host", os.getenv("DOCKER_SYSTEM_DIRECTORY"))
-        logging.debug(f"Starting component with filename on host {config_file}")
-
-        process_class = None
-        try:
-            process_class = globals()[payload["type"]]
-        except KeyError:
-            self._set_headers(403)
-            self.wfile.write(json.dumps({"error":f"Invalid process type {payload['type']}"}).encode("utf-8"))
-            return
-
         new_process_config = {
             "config_file": config_file,
-            "id": payload["id"],
-            "type": payload["type"],
+            "name": payload["id"],
+            "component": payload["type"],
             "rf": payload["rf"],
             "permissions": [],
         }
 
-        process_handle = process_class(Config.influxdb_client, Config.docker_client, new_process_config)
-
-
-        Globals.process_metadata.append({
-            'id': payload['id'],
-            'type': payload['type'],
-            'config': new_process_config,
-            'handle': process_handle,
-            'token': {None: []}
-        })
-        process_handle.start()
+        Globals.thread_manager.start(new_process_config)
 
         self._set_headers()
         self.wfile.write(json.dumps({"msg":f"process started: {payload['id']}"}).encode("utf-8"))
 
     def stop_component(self):
-        Globals.process_metadata
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
@@ -229,21 +186,18 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({"error":"Missing required field id"}).encode("utf-8"))
             return
 
-        for i, process_config in enumerate(Globals.process_metadata):
+        for i, process_config in enumerate(Globals.thread_manager.process_metadata):
             if process_config["id"] == payload["id"]:
-                if process_config["type"] not in perms:
-                    continue
-                process_config["handle"].stop()
                 self._set_headers()
                 self.wfile.write(json.dumps({"id":process_config["id"]}).encode("utf-8"))
-                del Globals.process_metadata[i]
+                process_config["handle"].stop()
+                del Globals.thread_manager.process_metadata[i]
                 return
         self._set_headers(404)
         self.wfile.write(json.dumps({"error":"Component with ID does not exist"}).encode("utf-8"))
 
     def check_component_health(self):
-        Globals.process_metadata
-        is_valid_token, perms = self._get_permissions()
+        is_valid_token, _ = self._get_permissions()
         if not is_valid_token:
             self._send_unauthorized()
             return
@@ -262,10 +216,8 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({"error":"Missing required field id"}).encode("utf-8"))
             return
 
-        for i, process_config in enumerate(Globals.process_metadata):
+        for i, process_config in enumerate(Globals.thread_manager.process_metadata):
             if process_config["id"] == payload["id"]:
-                if process_config["type"] not in perms:
-                    continue
                 self._set_headers()
                 self.wfile.write(json.dumps(process_config["handle"].get_status()).encode("utf-8"))
                 return

@@ -22,13 +22,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y && \
     libxcb-cursor0 \
     libgles2-mesa-dev \
     gr-osmosdr \
-    libuhd-dev
+    libuhd-dev \
+    git
 
-RUN mkdir -p /app
+RUN git clone https://github.com/oran-testing/ssb-spoofer /ssb-spoofer
 
-WORKDIR /app
-
-COPY . .
+WORKDIR /ssb-spoofer
 
 RUN rm -rf build && mkdir -p build && cd build && cmake -DENABLE_ZEROMQ=ON .. && make -j$(nproc) && make install && ldconfig
 

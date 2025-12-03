@@ -1,4 +1,6 @@
 import asyncio
+import sys
+import hashlib
 import configparser
 import logging
 import os
@@ -13,6 +15,8 @@ from docker.client import DockerClient
 from docker.types import IPAMConfig, IPAMPool
 from influxdb_client import InfluxDBClient, WriteApi
 from influxdb_client.client.write_api import SYNCHRONOUS
+
+from globals import Globals
 
 
 class RfType(Enum):
@@ -51,10 +55,11 @@ class WorkerThread:
         if "config_file" in process_config.keys():
             self.config.config_file = process_config["config_file"]
 
-        if "id" in process_config.keys():
-            self.config.container_id = process_config["id"]
+        if "name" in process_config.keys():
+            self.config.container_id = process_config["name"]
         else:
-            raise RuntimeError("Process id is required")
+            logging.critical("Process id is required")
+            sys.exit(1)
 
         if "args" in process_config.keys():
             self.config.cli_args = process_config["args"]
@@ -139,6 +144,31 @@ class WorkerThread:
             self.config.docker_client.networks.get("rt_metrics")
         )
 
+        for api in Globals.api_auth:
+            if self.config.container_id not in api.get("pass_to", []):
+                continue
+
+            api_scopes = api.get("scopes", None)
+            api_allowed_components = api.get("allowed_components", None)
+            api_name = api.get("name", None)
+            api_token = api.get("token", None)
+
+            if api_scopes is None or api_name is None or not isinstance(api_scopes, list) or api_token is None:
+                logging.warning("Skipping API auth due to insufficient configuration")
+                continue
+
+            if "start" in api_scopes and (api_allowed_components is None or not isinstance(api_allowed_components, list)):
+                logging.warning("allowed_components is required when start scope is enabled")
+                continue
+
+            self.config.container_networks.append(
+                self.config.docker_client.networks.get("rt_control")
+            )
+
+            self.config.container_env["CONTROL_TOKEN"] = api_token
+
+
+
         if self.config.rf_type == RfType.ZMQ:
             try:
                 self.config.container_networks.append(
@@ -198,7 +228,8 @@ class WorkerThread:
         self.log_thread.start()
 
     def start(self):
-        raise RuntimeError("start behavior must be defined by individual worker class")
+        logging.critical("start behavior must be defined by individual worker class")
+        sys.exit(1)
 
     def stop(self):
         """
@@ -252,7 +283,12 @@ class WorkerThread:
                         "time": formatted_timestamp,
                     },
                 )
-                logging.debug(f"[{self.config.container_id}]: {message_text}")
+ 
+                color_code = int(hashlib.md5(self.config.container_id.encode()).hexdigest(), 16) % 8 + 30
+                tag_color = f"\033[{color_code}m"
+
+                logging.debug(f"{tag_color}[{self.config.container_id}]\033[0m: {message_text}")
+                # logging.debug(f"[{self.config.container_id}]: {message_text}")
             except Exception as e:
                 logging.error(f"send_message failed with error: {e}")
 

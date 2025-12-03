@@ -18,10 +18,6 @@ RUN ./build_oai -I
 RUN ./build_oai -w USRP --noavx512 --ninja --nrUE \
     --cmake-opt "-DCMAKE_C_FLAGS='-mavx2 -mpclmul -msse4.2' -DCMAKE_CXX_FLAGS='-mavx2 -mpclmul -msse4.2'" -C
 
-# Copy entrypoint script
-COPY oai_ue_entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
 # Set working directory
 WORKDIR /opt/openairinterface5g
 
@@ -29,4 +25,4 @@ WORKDIR /opt/openairinterface5g
 ENV OAI_UE_ARGS=""
 
 # Entrypoint
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["sh", "-c", "/opt/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem $ARGS"]

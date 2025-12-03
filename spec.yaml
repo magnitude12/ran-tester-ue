@@ -1,0 +1,31 @@
+enable_cli: true
+
+api_auth:
+  - name: "swarm_master_token"
+    token: "testing_token"
+    scopes:
+      - list
+      - logs
+      - get
+      - healthcheck
+      - start
+      - stop
+    allowed_components:
+      - sni5gect
+      - rtue
+      - jammer
+      - ssb-spoofer
+
+#external_influx:
+#  token: "605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b"
+#  org: "rtu"
+#  bucket: "rtusystem"
+#  port: 8086
+#  host: "192.168.0.9" # IP of the master node
+
+run_spec:
+  - component: "sstorm"
+    name: "oai_sstorm_1"
+    config_file: "configs/srsran/oai_sstorm.conf"
+    rf:
+      type: "b200"

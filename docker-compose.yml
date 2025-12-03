@@ -25,22 +25,23 @@ services:
       metrics:
         ipv4_address: 172.19.1.7
       control:
-        ipv4_address: ${DOCKER_CONTROLLER_API_IP:-172.20.1.7}
+        ipv4_address: 172.20.1.7
     configs:
       - controller.yml
     ports:
-      - "9000:9000"
-    profiles:
-     - system
+      # WARNING: Exposes control API
+      - "1343:1343"
     depends_on:
       - influxdb
+    tty: true
+    stdin_open: true
+
 
 
   influxdb:
     container_name: influxdb
     image: influxdb:${DOCKER_INFLUXDB_VERSION}
     volumes:
-      - /tmp/:/tmp/host/
       - influxdb-storage:/var/lib/influxdb2:rw
     env_file:
       - .env
@@ -49,138 +50,28 @@ services:
     networks:
       metrics:
         ipv4_address: 172.19.1.5
-    profiles:
-     - system
 
   grafana:
-     image: rtu/grafana
+     image: ghcr.io/oran-testing/grafana
      build:
        context: grafana
      volumes:
        - grafana-storage:/var/lib/grafana:rw
      env_file:
        - .env
-     depends_on:
-       - influxdb
      ports:
        - 3300:${GRAFANA_PORT}
      networks:
        metrics:
          ipv4_address: 172.19.1.6
-     profiles:
-      - system
-
-  components_base:
-    image: ghcr.io/oran-testing/components_base
-    build:
-      context: .
-      dockerfile: Dockerfile.components_base
-    profiles:
-      - components
-
-  rtue:
-    image: ghcr.io/oran-testing/rtue
-    build:
-      context: ./rtue
-      dockerfile: Dockerfile
-    #depends_on:
-    #  - components_base
-    privileged: true
-    env_file:
-      - .env
-    profiles:
-      - components
-
-  jammer:
-    image: ghcr.io/oran-testing/jammer
-    build:
-      context: ./jammer
-      dockerfile: Dockerfile.alpine
-    depends_on:
-      - components_base
-    env_file:
-      - .env
-    profiles:
-      - components
-
-  uu-agent:
-    image: ghcr.io/oran-testing/uu-agent
-    build:
-      context: ./uu-agent
-      dockerfile: Dockerfile.alpine
-    depends_on:
-      - components_base
-    env_file:
-      - .env
-    profiles:
-      - components
-
-  llm_worker:
-    image: ghcr.io/oran-testing/llm_worker
-    env_file:
-      - .env
-    build:
-      context: ./llm_worker/
-      dockerfile: Dockerfile.alpine
-    ports:
-      - "8000:8000"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    profiles:
-      - components
-
-  ofh_attacker:
-    image: ghcr.io/oran-testing/ofh
-    build:
-      context: ./ofh/
-      dockerfile: Dockerfile.alpine
-    env_file:
-      - .env
-    network_mode: host
-    profiles:
-      - components
-
-  oai_ue:
-    image: ghcr.io/oran-testing/oai_ue
-    build:
-      context: ./oai_integration
-      dockerfile: Dockerfile
-    privileged: true
-    network_mode: host
-    env_file:
-      - .env
-    profiles:
-      - components
-
-  ssb-spoofer:
-    image: ghcr.io/oran-testing/ssb-spoofer
-    privileged: true
-    build:
-      context: ./ssb-spoofer
-      dockerfile: Dockerfile
-    env_file:
-      - .env
-    profiles:
-      - components
-
-  sni5gect:
-    image: ghcr.io/oran-testing/sni5gect
-    build:
-      context: ./sni5gect-compact
-      dockerfile: Dockerfile
-    privileged: true
+     depends_on:
+       - influxdb
 
 configs:
   controller.yml:
     file: ${DOCKER_CONTROLLER_INIT_CONFIG:-configs/multi_ue_uhd.yaml}
 
 volumes:
-  ue-storage:
   influxdb-storage:
   grafana-storage:
 

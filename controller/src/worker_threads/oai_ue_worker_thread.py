@@ -17,12 +17,9 @@ class oai_ue(WorkerThread):
 
         # Ensure ARGS begins with the binary, not a dash option
         # so the entrypoint executes the full command correctly.
-        oai_command = "/opt/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem"
         if self.config.cli_args:
             args_str = " ".join(self.config.cli_args)
-            self.config.container_env["ARGS"] = f"{oai_command} {args_str}"
-        else:
-            self.config.container_env["ARGS"] = oai_command
+            self.config.container_env["ARGS"] = f"{args_str}"
         self.config.host_network = True
         
         # Volumes for B200 RF are handled in base setup_volumes()

@@ -35,7 +35,7 @@ RUN apt-get update && apt-get upgrade -y && \
     git
 
 
-RUN git clone https://github.com/oran-testing/rtue /app
+RUN git clone https://github.com/aevyy/signal-storm /app
 
 RUN mkdir -p /app/build
 
@@ -49,4 +49,4 @@ RUN cmake ../ && \
 
 WORKDIR /app
 
-CMD [ "sh", "-c", "/usr/local/bin/rtue /ue.conf $ARGS" ]
+CMD [ "sh", "-c", "/usr/local/bin/srsue /ue.conf $ARGS" ]

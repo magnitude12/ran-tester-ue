@@ -1,0 +1,67 @@
+# SSB Spoofer Configuration
+
+# RF Configuration
+rf:
+  device_name: "uhd"
+  device_args: "type=b200"
+  
+  rx_freq_hz: 3619200000          # RX center frequency (Hz)
+  tx_freq_hz: 3619200000          # TX center frequency (Hz)
+  
+  srate_hz: 23040000              # Sample rate: 23.04 MHz
+  
+  rx_gain_db: 40.0                # RX gain (dB)
+  tx_gain_db: 60.0                # TX gain (dB)
+
+# SSB Configuration  
+ssb:
+  pattern: "B"                    # SSB pattern (A for FR1 < 3GHz)
+  scs_khz: 30                     # Subcarrier spacing (15 kHz)
+  periodicity_ms: 20              # SSB periodicity for scanning
+                                  # (used by detector, NOT transmission timing!)
+  
+  ssb_freq_offset_hz: 0           # SSB frequency offset from center
+  
+  # Power allocation - Modify for attack effectiveness!
+  # Higher values = more power
+  beta_pss: 1.0                   # PSS power
+  beta_sss: 1.0                   # SSS power
+  beta_pbch: 1.0                  # PBCH power
+  beta_pbch_dmrs: 1.0             # PBCH DMRS power
+
+# Attack Configuration
+attack:
+  target_pci: 1                # Target Physical Cell ID
+  scan_for_target: true           # Scan for specific PCI if true, for any PCI otherwise
+  
+  # SSB Spoofing Attack
+  modify_cell_barred: true        # Mark cell as barred
+  cell_barred_value: true
+  
+  modify_coreset0_idx: false       # Corrupt CORESET0 config
+  coreset0_idx_value: 15          # Invalid CORESET0 index
+  
+  modify_ss0_idx: true            # Corrupt SearchSpace0 config  
+  ss0_idx_value: 15               # Invalid SearchSpace0 index
+  
+  modify_intra_freq_resel: false
+  intra_freq_resel_value: false
+  
+  # Transmission Mode
+  tx_power_offset_db: 0.0
+  continuous_tx: true
+  
+  # Burst Control Parameters
+  max_bursts: 0                   # Maximum number of bursts (0 = unlimited)
+  burst_interval_us: 9000         # Delay between bursts in microseconds (0 = minimum)
+  burst_length_ms: 1              # Number of SSBs per burst (1 SSB = 1 ms subframe)
+                                  
+  # EFFECTIVE PERIODICITY = burst_length_ms + (burst_interval_us / 1000)
+
+# Operational Parameters
+operation:
+  scan_duration_sec: 30.0
+  log_level: "info"
+  log_file: "ssb_spoofer.log"
+  save_samples: false
+  samples_file: "rx_samples.dat"
