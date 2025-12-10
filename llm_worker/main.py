@@ -14,6 +14,7 @@ from sniffer_validator import SnifferValidator
 from jammer_validator import JammerValidator
 from plan_validator import PlanValidator
 from uu_agent_validator import UuagentValidator
+from sstorm_validator import SStormValidator
 
 from llm_wrapper import LLMWrapper
 from executor import Executor
@@ -316,6 +317,8 @@ if __name__ == '__main__':
             current_validator = None
             if component_type == "rtue":
                 current_validator = RTUEValidator()
+            elif component_type == "sstorm":
+                current_validator = SStormValidator()
             elif component_type == "jammer":
                 current_validator = JammerValidator()
             elif component_type == "sniffer":
@@ -324,7 +327,7 @@ if __name__ == '__main__':
                 current_validator = UuagentValidator()
             api_payload = run_exec_loop(executor, current_validator, plan_item)
             if plan_item.get("rf") == "b200":
-                api_payload["rf"] = {"type": "b200", "images_dir": "/usr/share/uhd/images/"}
+                api_payload["rf"] = {"type": "b200"}
             elif plan_item.get("rf") == "zmq":
                 api_payload["rf"] = {"type": "zmq", "tcp_subnet": "172.22.0.0/24", "gateway": "172.22.0.1"}
         else:
