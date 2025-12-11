@@ -18,6 +18,12 @@ api_auth:
 
 run_spec:
 
+  - component: "rtue"
+    name: "rtue_uhd_001"
+    config_file: "configs/srsran/ue_uhd.conf"
+    rf:
+      type: "b200"
+
   - component: "llm_worker"
     name: "sniffer_test_worker"
     config_file: "configs/llm_worker/test.yaml"
