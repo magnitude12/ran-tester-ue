@@ -46,7 +46,6 @@ class SnifferValidator(Validator):
     def __init__(self):
         super().__init__()
 
-        # Updated schema matching the new LLM JSON format
         self.schema = {
             "id": str,
 
@@ -86,47 +85,48 @@ class SnifferValidator(Validator):
             "rf.channels[1].rx_gain": int,
             "rf.channels[1].tx_gain": int,
             "rf.channels[1].enable": bool,
-
-            "workers.pool_size": int,
-            "workers.n_ue_dl_worker": int,
-            "workers.n_ue_ul_worker": int,
-            "workers.n_gnb_dl_worker": int,
-            "workers.n_gnb_ul_worker": int,
-
-            "uetracker.close_timeout": int,
-            "uetracker.parse_messages": bool,
-            "uetracker.num_ues": int,
-            "uetracker.enable_gpu": bool,
-
-            "downlink_injector.delay_n_slots": int,
-            "downlink_injector.duplications": int,
-            "downlink_injector.tx_cfo_correction": (float, int),
-            "downlink_injector.tx_advancement": int,
-            "downlink_injector.pdsch_mcs": int,
-            "downlink_injector.pdsch_prbs": int,
-
-            "databases[0].enable": bool,
-            "databases[0].host": str,
-            "databases[0].port": int,
-            "databases[0].org": str,
-            "databases[0].token": str,
-            "databases[0].bucket": str,
-            "databases[0].data_id": str,
-
-            "log.log_level": str,
-            "log.syncer": str,
-            "log.worker": str,
-            "log.bc_worker": str,
-
-            "exploit": str,
         }
 
     def _json_to_config(self, json_obj):
-        # Remove the ID, not part of runtime config
         json_obj.pop("id", None)
 
-        # Convert flattened JSON back to nested YAML dict
         nested = unflatten(json_obj)
+
+        nested["databases"] = [{
+          "enable": "true",
+          "host": "influxdb",
+          "port": 8086,
+          "org": "rtu",
+          "token": "605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b",
+          "bucket": "rtusystem",
+          "data_id": "test",
+        }]
+
+        nested["workers"] = {
+          "pool_size": 24,
+          "n_ue_dl_worker": 4,
+          "n_ue_ul_worker": 4,
+          "n_gnb_dl_worker": 4,
+          "n_gnb_ul_worker": 4
+        }
+
+        nested["uetracker"] = {
+          "close_timeout": 5000,
+          "parse_messages": "true",
+          "num_ues": 1,
+          "enable_gpu": "false"
+        }
+
+        nested["downlink_injector"] = {
+          "delay_n_slots": 5,
+          "duplications": 2,
+          "tx_cfo_correction": 0,
+          "tx_advancement": 160,
+          "pdsch_mcs": 3,
+          "pdsch_prbs": 24
+        }
+
+        nested["exploit"] = "build/modules/lib_dummy_exploit.so"
 
         return yaml.dump(nested, sort_keys=False, indent=2)
 
@@ -157,7 +157,7 @@ class SnifferValidator(Validator):
 
         return True, {
             "id": component_id,
-            "type": "sniffer",
+            "type": "sni5gect",
             "config_str": config_yaml
         }
 

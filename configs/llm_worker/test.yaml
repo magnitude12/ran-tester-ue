@@ -346,27 +346,7 @@ sniffer: |
     "rf.downlink_cfo": "Float, Downlink Carrier Frequency Offset correction in Hz, Default: 0",
     "rf.padding.front_padding": "Integer, Number of IQ samples to pad in front of each burst, Default: 0",
     "rf.padding.back_padding": "Integer, Number of IQ samples to pad at the end of each burst, Default: 0",
-    "rf.channels": "Array, List of RF channel configurations",
-    "workers.pool_size": "Integer, Worker pool size, Default: 24",
-    "workers.n_ue_dl_worker": "Integer, Number of UE downlink workers, Default: 4",
-    "workers.n_ue_ul_worker": "Integer, Number of UE uplink workers, Default: 4",
-    "workers.n_gnb_dl_worker": "Integer, Number of gNB downlink workers, Default: 4",
-    "workers.n_gnb_ul_worker": "Integer, Number of gNB uplink workers, Default: 4",
-    "uetracker.close_timeout": "Integer, Timeout in ms to stop tracking if no messages received, Default: 5000",
-    "uetracker.parse_messages": "Boolean, Whether to parse messages, Default: true",
-    "uetracker.num_ues": "Integer, Number of UE trackers to pre-initialize, Default: 1",
-    "uetracker.enable_gpu": "Boolean, Enable GPU acceleration for decoding, Default: false",
-    "downlink_injector.delay_n_slots": "Integer, Number of slots to delay injecting the message, Default: 5",
-    "downlink_injector.duplications": "Integer, Number of duplications to send in each inject, Default: 2",
-    "downlink_injector.tx_cfo_correction": "Float, Uplink CFO correction (Hz), Default: 0",
-    "downlink_injector.tx_advancement": "Integer, Number of samples to send in advance, Default: 160",
-    "downlink_injector.pdsch_mcs": "Integer, PDSCH MCS, Default: 3",
-    "downlink_injector.pdsch_prbs": "Integer, PDSCH PRBs, Default: 24",
-    "databases": "Array, List of database configurations (e.g., InfluxDB)",
-    "log.log_level": "String, Log level, Default: 'INFO'",
-    "log.syncer": "String, Syncer log level, Default: 'INFO'",
-    "log.worker": "String, Worker log level, Default: 'INFO'",
-    "log.bc_worker": "String, BC Worker log level, Default: 'INFO'"
+    "rf.channels": "Array, List of RF channel configurations"
   }
   ```
   ## Example default JSON response:
@@ -409,40 +389,7 @@ sniffer: |
     "rf.channels[1].tx_offset": 0,
     "rf.channels[1].rx_gain": 40,
     "rf.channels[1].tx_gain": 50,
-    "rf.channels[1].enable": false,
-
-    "workers.pool_size": 24,
-    "workers.n_ue_dl_worker": 4,
-    "workers.n_ue_ul_worker": 4,
-    "workers.n_gnb_dl_worker": 4,
-    "workers.n_gnb_ul_worker": 4,
-
-    "uetracker.close_timeout": 5000,
-    "uetracker.parse_messages": true,
-    "uetracker.num_ues": 1,
-    "uetracker.enable_gpu": false,
-
-    "downlink_injector.delay_n_slots": 5,
-    "downlink_injector.duplications": 2,
-    "downlink_injector.tx_cfo_correction": 0,
-    "downlink_injector.tx_advancement": 160,
-    "downlink_injector.pdsch_mcs": 3,
-    "downlink_injector.pdsch_prbs": 24,
-
-    "databases[0].enable": true,
-    "databases[0].host": "influxdb",
-    "databases[0].port": 8086,
-    "databases[0].org": "rtu",
-    "databases[0].token": "605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b",
-    "databases[0].bucket": "rtusystem",
-    "databases[0].data_id": "test",
-
-    "log.log_level": "INFO",
-    "log.syncer": "INFO",
-    "log.worker": "INFO",
-    "log.bc_worker": "INFO",
-
-    "exploit": "build/modules/lib_dummy_exploit.so"
+    "rf.channels[1].enable": false
   }
   ```
 
@@ -572,4 +519,4 @@ sstorm: |
   ```
 
 user_prompt: |
-  Make me a basic signalling storm attack
+  Make me a basic sniffer with default arguments
