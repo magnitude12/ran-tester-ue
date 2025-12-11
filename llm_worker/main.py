@@ -6,8 +6,10 @@ import logging
 import os
 import sys
 import argparse
+import re
 
 from config import Config
+from typing import Dict, Any, List, Optional
 
 from rtue_validator import RTUEValidator
 from sniffer_validator import SnifferValidator
@@ -90,6 +92,8 @@ def run_plan_loop(planner, plan_validator):
             logging.error(f"Encountered errors in plan validation: {val_res}")
             continue
 
+        logging.debug(f"PLAN:\n{json.dumps(val_res, indent=4)}")
+
         with open(os.path.join(Config.results_dir, "plan.json"), "w") as f:
             json.dump(val_res, f, indent=4)
         return val_res
@@ -105,6 +109,7 @@ def run_exec_loop(executor, current_validator, plan_item):
     execution_log = open(os.path.join(Config.results_dir, f"execution_log.txt"), "a")
 
     execution_log.write(f"Running execution loop for:\n{json.dumps(plan_item, indent=2)}")
+    logging.debug(f"Running execution loop for:\n{json.dumps(plan_item, indent=2)}")
 
     while (not is_valid_plan or not is_successful) and exec_attempt <= Config.options.get("nof_exec_attempts", 10):
         raw_exec = ""
@@ -116,12 +121,14 @@ def run_exec_loop(executor, current_validator, plan_item):
 
         if not is_successful:
             execution_log.write(f"\tEncountered errors in execution: {raw_exec}\n")
+            logging.debug(f"\tEncountered errors in execution: {raw_exec}\n")
             continue
 
         is_valid_plan, val_res = current_validator.validate(raw_exec)
         if not is_valid_plan:
             errors = val_res
             execution_log.write(f"\tEncountered errors in execution validation: {val_res}\n")
+            logging.debug(f"\tEncountered errors in execution validation: {val_res}\n")
             continue
 
     if exec_attempt > Config.options.get("nof_exec_attempts", 10):

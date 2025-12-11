@@ -158,7 +158,7 @@ class WorkerThread:
                 continue
 
             if "start" in api_scopes and (api_allowed_components is None or not isinstance(api_allowed_components, list)):
-                logging.warning("allowed_components is required when start scope is enabled")
+                logging.warning("allowed_components are required when start scope is enabled")
                 continue
 
             self.config.container_networks.append(

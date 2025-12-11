@@ -1,5 +1,6 @@
 import yaml
 from validator import Validator
+import logging
 
 
 def unflatten(flat_dict):
@@ -130,6 +131,7 @@ class SnifferValidator(Validator):
         return yaml.dump(nested, sort_keys=False, indent=2)
 
     def validate(self, raw_str):
+        logging.debug(f"Validating sniffer input: {raw_str}")
         raw_str = raw_str.strip()
         json_obj = self._extract_json(raw_str)
 

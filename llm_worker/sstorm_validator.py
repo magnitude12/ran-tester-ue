@@ -17,7 +17,7 @@ class SStormValidator(Validator):
         self.schema = {
             "id": str, "ue_signal_storm": bool, "rf_freq_offset": int, "rf_tx_gain": int, "rf_rx_gain": int,
             "rf_srate": (float, int), "rf_nof_antennas": int, "rf_device_name": str,
-            "rf_device_args": str, "rat_eutra_dl_earfcn": int,
+            "rf_device_args": str, "rat_eutra_dl_earfcn": int, "rf_time_adv_nsamples": int,
             "rat_eutra_nof_carriers": int, "rat_nr_bands": int, "rat_nr_nof_carriers": int,
             "rat_nr_max_nof_prb": int, "rat_nr_nof_prb": int, "pcap_enable": str,
             "pcap_mac_filename": str, "pcap_mac_nr_filename": str, "pcap_nas_filename": str,
@@ -45,6 +45,8 @@ class SStormValidator(Validator):
             for flat_key, value in json_obj.items():
                 if flat_key.startswith(prefix):
                     new_key = flat_key[len(prefix):]
+                    if isinstance(value, bool):
+                        value = str(value).lower()
                     section_content[new_key] = str(value)
             if section_content:
                 config[section_name] = section_content
@@ -64,9 +66,6 @@ class SStormValidator(Validator):
 
     def _validate_uhd_args(self, args: str):
         parsed = self._parse_rf_args(args)
-
-        if 'addr' not in parsed:
-            self.errors.append("Missing 'addr' in UHD args.")
 
     def _validate_zmq_args(self, args: str):
         parsed = self._parse_rf_args(args)
@@ -137,7 +136,7 @@ class SStormValidator(Validator):
             self.errors.append("Converting to configuration string failed")
             return False, self.errors
 
-        return True, {"id": component_id, "type": "rtue", "config_str": config_str}
+        return True, {"id": component_id, "type": "sstorm", "config_str": config_str}
 
 
 

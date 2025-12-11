@@ -1,23 +1,26 @@
 enable_cli: true
 
 api_auth:
-  - name: "llm.local"
+  - name: "llm_testing_token"
+    token: "for_the_llm"
     scopes:
       - list
       - logs
       - get
-      - healthcheck
+      - health
       - start
     allowed_components:
       - sni5gect
       - sstorm
+      - rtue
     pass_to:
       - sniffer_test_worker
 
 run_spec:
+
   - component: "llm_worker"
     name: "sniffer_test_worker"
     config_file: "configs/llm_worker/test.yaml"
-    results_dir: ".rt_results"
+    results_dir: "sniffer_test"
     rf:
       type: "none"

@@ -482,15 +482,7 @@ sstorm: |
     "nas_apn_protocol": "String, Default: 'ipv4'",
     "gui_enable": "Boolean, Always put: false",
     "gw_ip_devname": "String, Always put: tun_sstorm",
-    "gw_ip_netmask": "String, Always put: 255.255.255.0",
-    "general_metrics_influxdb_enable": "Boolean, Always put: true",
-    "general_metrics_influxdb_url": "String, Always put: influxdb",
-    "general_metrics_influxdb_port": "Integer, Always put: 8086",
-    "general_metrics_influxdb_org": "String, Always put: rtu",
-    "general_metrics_influxdb_token": "String, Always put: 605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b",
-    "general_metrics_influxdb_bucket": "String, Always put: rtusystem",
-    "general_metrics_period_secs": "float, Always put: 0.5",
-    "general_ue_data_identifier": "string, put something that matches the request"
+    "gw_ip_netmask": "String, Always put: 255.255.255.0"
   }
   ```
 
@@ -533,15 +525,7 @@ sstorm: |
     "nas_apn_protocol": "ipv4",
     "gui_enable": false,
     "gw_ip_devname": "tun_sstorm",
-    "gw_ip_netmask": "255.255.255.0",
-    "general_metrics_influxdb_enable": true,
-    "general_metrics_influxdb_url": "influxdb",
-    "general_metrics_influxdb_port": 8086,
-    "general_metrics_influxdb_org": "rtu",
-    "general_metrics_influxdb_token": "605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b",
-    "general_metrics_influxdb_bucket": "rtusystem",
-    "general_metrics_period_secs": 0.5,
-    "general_ue_data_identifier": "sstorm_uhd_1"
+    "gw_ip_netmask": "255.255.255.0"
   }
   ```
 
@@ -583,17 +567,9 @@ sstorm: |
     "nas_apn_protocol": "ipv4",
     "gui_enable": false,
     "gw_ip_devname": "tun_sstorm",
-    "gw_ip_netmask": "255.255.255.0",
-    "general_metrics_influxdb_enable": true,
-    "general_metrics_influxdb_url": "influxdb",
-    "general_metrics_influxdb_port": 8086,
-    "general_metrics_influxdb_org": "rtu",
-    "general_metrics_influxdb_token": "605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b",
-    "general_metrics_influxdb_bucket": "rtusystem",
-    "general_metrics_period_secs": 0.5,
-    "general_ue_data_identifier": "generic_zmq"
+    "gw_ip_netmask": "255.255.255.0"
   }
   ```
 
 user_prompt: |
-  Make me a basic sniffer that sniffs band3
+  Make me a basic signalling storm attack
