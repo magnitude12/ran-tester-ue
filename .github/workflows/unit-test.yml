@@ -32,10 +32,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r controller/requirements.txt
-          pip install pytest pytest-mock
 
       - name: Run controller unit tests
         run: |
-          cd controller
+          cd controller/src
           pytest -v
 
