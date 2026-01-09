@@ -7,7 +7,7 @@ import os
 import threading
 import time
 import uuid
-from datetime import datetime
+import datetime
 from enum import Enum
 
 import docker
@@ -267,7 +267,7 @@ class WorkerThread:
             write_options=SYNCHRONOUS
         ) as write_api:
             try:
-                utc_timestamp = datetime.utcnow()
+                utc_timestamp = datetime.datetime.now(datetime.UTC)
                 formatted_timestamp = utc_timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
                 self.influx_push(
                     write_api,

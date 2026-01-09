@@ -115,8 +115,8 @@ class CLIManager:
 
         elif cmd.startswith("restart"):
             args = cmd.split(" ")
-            if len(args) > 1:
-                print("Usage: stop <process index or 'all'>")
+            if len(args) < 2:
+                print("Usage: restart <process index or 'all'>")
                 return
             process_idx = args[1]
             if process_idx == "all":
