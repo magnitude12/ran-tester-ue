@@ -35,8 +35,7 @@ jobs:
           pip install pytest pytest-mock
 
       - name: Run controller unit tests
-        env:
-          PYTHONPATH: ./controller
         run: |
+          cd controller
           pytest -v
 
