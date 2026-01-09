@@ -244,7 +244,7 @@ class ComponentManager:
 
         external_target = Globals.target_managers.get(process_config.get("target"), None)
         if external_target is None:
-            logging.critical(f"External target with name: {process_config.get("target")} not found")
+            logging.critical(f"External target with name: {process_config.get('target')} not found")
             return
 
         config_str = ""
