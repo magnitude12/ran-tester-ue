@@ -44,8 +44,7 @@ class SystemControlHandler(http.server.SimpleHTTPRequestHandler):
             response_list.append({
                 "id": process_config["id"],
                 "type": process_config["type"],
-                "config_file": process_config["config"]["config_file"],
-                "permissions": process_config["config"]["permissions"]
+                "config_file": process_config["config"]["config_file"]
             })
         self._set_headers()
         self.wfile.write(json.dumps({"running": response_list}).encode("utf-8"))

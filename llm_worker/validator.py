@@ -18,6 +18,7 @@ class Validator:
         fenced_blocks = re.findall(r"```(?:json)?\n([\s\S]*?)```", raw_str)
         for block in fenced_blocks:
             block = block.strip()
+            block = block.replace("'", "\"")
             try:
                 return json.loads(block)
             except json.JSONDecodeError as e:

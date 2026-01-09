@@ -1,0 +1,14 @@
+ran_properly,nof_messages,time_to_plan,time_to_start,time_to_decode,nof_enabled_channels,cpu_perc,ram_gb,ues_detected
+true,5,19130,21300,2700,2,67,8.2,0
+true,4,19130,21300,2700,2,67,8.2,0
+
+# plan time -> ms of total until plan
+# start time -> lap at sniffer start - ms of plan
+# decode time -> lap at decode - ms of start
+
+# sudo docker compose up 5gc
+# sudo ./run_gnb.sh
+# sudo docker compose up
+
+# ps aux | grpe shadower
+# get CPU / RAM
