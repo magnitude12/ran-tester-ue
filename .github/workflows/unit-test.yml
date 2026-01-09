@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  run_pytest:
+  run-pytest:
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
