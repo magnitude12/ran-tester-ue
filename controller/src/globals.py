@@ -6,3 +6,5 @@ class Globals:
     thread_manager = None
     api_auth = None
     target_managers = {}
+
+    worker_thread_registry = {}

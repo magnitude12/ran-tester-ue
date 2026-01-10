@@ -68,7 +68,7 @@ class ComponentManager:
         component_branch = component.get("branch", "main")
 
         worker_thread_url = component.get("worker_thread_url", f"https://raw.githubusercontent.com/{component_path}/{component_branch}/worker_thread.py")
-        self._load_worker_thread_from_url(worker_thread_url)
+        self._load_worker_thread_from_url(worker_thread_url, component_path)
 
         docker_image = component.get("docker_image", None)
         if docker_image is None:
@@ -190,9 +190,9 @@ class ComponentManager:
 
         process_class = None
         try:
-            process_class = globals()[process_config["component"]]
+            process_class = Globals.worker_thread_registry[process_config["component"]] #globals()[process_config["component"]]
         except KeyError:
-            logging.critical(f"Invalid component {process_config['component']}")
+            logging.critical(f"No worker thread class found for: {process_config['component']}")
             return
 
         process_handle = process_class(self.influxdb_client, self.docker_client, process_config)
@@ -329,23 +329,31 @@ class ComponentManager:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Buildx build failed: {e.stderr}")
 
-    def _load_worker_thread_from_url(self, url: str):
+    def _load_worker_thread_from_url(self, url: str, component_path):
         response = requests.get(url)
         if response.status_code != 200:
-            logging.critical(f"Worker thread for specified component not provided. Check that the file at this URL exists: {url}")
+            logging.critical(
+                f"Worker thread for specified component not provided. "
+                f"Check that the file at this URL exists: {url}"
+            )
             sys.exit(1)
-        
+
         code = response.text
 
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp_file:
             tmp_file.write(code)
             tmp_path = tmp_file.name
 
-        module_name = tmp_path.split("/")[-1][:-3]  # file name without .py
+        module_name = os.path.basename(tmp_path)[:-3]
         spec = importlib.util.spec_from_file_location(module_name, tmp_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        logging.info(f"Loaded module {module_name} from {url}")
-        return module
+        for _, cls in inspect.getmembers(module, inspect.isclass):
+            if cls.__module__ == module.__name__:
+                logging.info(f"Loaded worker class {cls.__name__} from {url}")
+                Globals.worker_thread_registry[component_path] = cls
+                return cls
+
+        raise RuntimeError(f"No class definitions found in worker file from {url}")
 

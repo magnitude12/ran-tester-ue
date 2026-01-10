@@ -24,6 +24,8 @@ build_spec:
 
 run_spec:
   - component: "cueltschey/rt-env-test"
+    config_file: "configs/llm/test.yaml"
     name: "test"
+    results_dir: "test"
     rf:
       type: "none"
