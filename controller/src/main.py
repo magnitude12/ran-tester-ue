@@ -111,14 +111,11 @@ if __name__ == '__main__':
     external_influx_config = yaml_config.get("external_influx", None)
     Globals.thread_manager = ComponentManager(external_influx_config)
 
-    force_build = yaml_config.get("force_build", False)
-
     build_config = yaml_config.get("build_spec", [])
-
     threads_config = yaml_config.get("run_spec", [])
 
     for b in build_config:
-        if force_build:
+        if b.get("force_rebuild", False):
             Globals.thread_manager.build(b)
         else:
             Globals.thread_manager.build_if_not_exists(b)

@@ -1,8 +1,11 @@
+import shutil
+import requests 
 import time
 import sys
 import docker
 import os
 import importlib.util
+import tempfile
 import inspect
 import logging
 import subprocess
@@ -14,20 +17,6 @@ from globals import Globals
 class ComponentManager:
     def __init__(self, external_influx=None):
 
-        for worker_thread_file in [f for f in os.listdir("worker_threads") if f.endswith('.py') and f != '__init__.py']:
-            module_name = worker_thread_file[:-3]
-
-            file_path = os.path.join("worker_threads", worker_thread_file)
-
-            spec = importlib.util.spec_from_file_location(module_name, file_path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            for name, obj in vars(module).items():
-                if isinstance(obj, type):
-                    globals()[name] = obj
-                    if name == "WorkerThread":
-                        continue
-                    logging.info(f"Loaded worker thread module: {name}")
 
         if external_influx is None:
             self.configure_influxdb_local()
@@ -71,33 +60,54 @@ class ComponentManager:
         )
 
     def build(self, component):
-        docker_image = component.get("docker_image")
-        if docker_image is None:
-            logging.critical("docker_image required in build_spec")
+        component_path = component.get("component")
+        if component_path is None:
+            logging.critical(f"Error in component: component required in build_spec\n{component}")
             sys.exit(1)
 
-        component_name = component.get("component")
-        if component_name is None:
-            logging.critical("component required in build_spec")
-            sys.exit(1)
+        component_branch = component.get("branch", "main")
+
+        worker_thread_url = component.get("worker_thread_url", f"https://raw.githubusercontent.com/{component_path}/{component_branch}/worker_thread.py")
+        self._load_worker_thread_from_url(worker_thread_url)
+
+        docker_image = component.get("docker_image", None)
+        if docker_image is None:
+            docker_image = f"ghcr.io/{component_path}"
 
         try:
-            enable_pull = component.get("enable_pull", False)
+            enable_pull = component.get("pull", True)
             if enable_pull:
                 logging.info(f"Pulling Docker image: {docker_image}")
                 self.docker_client.images.pull(docker_image)
             else:
                 logging.info(f"Building Docker image: {docker_image}")
-                dockerfile_path = os.path.join("/host/dockerfiles", f"Dockerfile.{component_name}")
+                repo_url = f"https://github.com/{component_path}"
+                repo_name = component_path.split('/')[-1]
+                clone_dir = f"/tmp/{repo_name}"
+                dockerfile_path = f"/tmp/{repo_name}/{component.get('dockerfile', 'Dockerfile')}"
 
-                # Check if the Dockerfile exists
+                if os.path.exists(clone_dir):
+                    shutil.rmtree(clone_dir)
+
+                process = subprocess.Popen(
+                    ["git", "clone", "-b", component_branch, repo_url, clone_dir],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+
+                logging.info(f"Running git clone {repo_url}...")
+                process.wait()
+                if process.returncode != 0:
+                    for line in process.stderr:
+                        logging.critical(line.strip())
+                    logging.critical(f"git clone failed with code {process.returncode}")
+
+
                 if not os.path.exists(dockerfile_path):
                     raise RuntimeError(f"Dockerfile {dockerfile_path} does not exist")
 
-                # Build the Docker image from the Dockerfile
                 logging.info(f"Building Docker image from: {dockerfile_path}")
-
-                # The context for building the image (the parent directory of the Dockerfile)
                 build_context = os.path.dirname(dockerfile_path)
 
                 self._run_buildx_build(docker_image, dockerfile_path, build_context)
@@ -106,10 +116,14 @@ class ComponentManager:
             raise RuntimeError(f"Error while building component {component['component']}: {str(e)}")
 
     def build_if_not_exists(self, component):
-        docker_image = component.get("docker_image")
-        if docker_image is None:
-            logging.critical("docker_image required in build_spec")
+        component_path = component.get("component")
+        if component_path is None:
+            logging.critical(f"Error in component: component required in build_spec\n{component}")
             sys.exit(1)
+
+        docker_image = component.get("docker_image", None)
+        if docker_image is None:
+            docker_image = f"ghcr.io/{component_path}"
 
         try:
             images = self.docker_client.images.list()
@@ -121,7 +135,7 @@ class ComponentManager:
                 self.build(component)
 
         except Exception as e:
-            raise RuntimeError(f"Error while checking/existing component {component['component']}: {str(e)}")
+            raise RuntimeError(f"Error while checking/existing component {component_path}: {str(e)}")
 
     
     def start(self, process_config):
@@ -314,3 +328,24 @@ class ComponentManager:
 
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Buildx build failed: {e.stderr}")
+
+    def _load_worker_thread_from_url(self, url: str):
+        response = requests.get(url)
+        if response.status_code != 200:
+            logging.critical(f"Worker thread for specified component not provided. Check that the file at this URL exists: {url}")
+            sys.exit(1)
+        
+        code = response.text
+
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp_file:
+            tmp_file.write(code)
+            tmp_path = tmp_file.name
+
+        module_name = tmp_path.split("/")[-1][:-3]  # file name without .py
+        spec = importlib.util.spec_from_file_location(module_name, tmp_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        logging.info(f"Loaded module {module_name} from {url}")
+        return module
+

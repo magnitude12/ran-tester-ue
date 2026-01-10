@@ -16,17 +16,14 @@ api_auth:
     pass_to:
       - sniffer_test_worker
 
+build_spec:
+  - component: "cueltschey/rt-env-test"
+    branch: "main"
+    pull: false
+
+
 run_spec:
-
-  - component: "rtue"
-    name: "rtue_uhd_001"
-    config_file: "configs/srsran/ue_uhd.conf"
-    rf:
-      type: "b200"
-
-  - component: "llm_worker"
-    name: "sniffer_test_worker"
-    config_file: "configs/llm_worker/test.yaml"
-    results_dir: "sniffer_test"
+  - component: "cueltschey/rt-env-test"
+    name: "test"
     rf:
       type: "none"
