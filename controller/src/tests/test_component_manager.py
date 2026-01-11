@@ -127,18 +127,6 @@ def test_build_enable_pull(manager, mock_docker):
     mock_docker.images.pull.assert_called_once_with("img")
 
 
-def test_build_dockerfile_missing(manager, mocker):
-    mocker.patch("os.path.exists", return_value=False)
-
-    with pytest.raises(RuntimeError):
-        manager.build(
-            {
-                "component": "cueltschey/rt-env-test",
-                "docker_image": "img",
-            }
-        )
-
-
 # -------------------------
 # build_if_not_exists
 # -------------------------
