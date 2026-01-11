@@ -118,7 +118,7 @@ def test_build_missing_docker_image(manager, mocker):
 def test_build_enable_pull(manager, mock_docker):
     manager.build(
         {
-            "component": "comp",
+            "component": "cueltschey/rt-env-test",
             "docker_image": "img",
             "enable_pull": True,
         }
@@ -133,7 +133,7 @@ def test_build_dockerfile_missing(manager, mocker):
     with pytest.raises(RuntimeError):
         manager.build(
             {
-                "component": "comp",
+                "component": "cueltschey/rt-env-test",
                 "docker_image": "img",
             }
         )
@@ -150,7 +150,7 @@ def test_build_if_not_exists_skips(manager, mock_docker):
 
     manager.build_if_not_exists(
         {
-            "component": "comp",
+            "component": "cueltschey/rt-env-test",
             "docker_image": "img",
         }
     )
@@ -161,7 +161,7 @@ def test_build_if_not_exists_calls_build(manager, mocker):
 
     manager.build_if_not_exists(
         {
-            "component": "comp",
+            "component": "cueltschey/rt-env-test",
             "docker_image": "img",
         }
     )
