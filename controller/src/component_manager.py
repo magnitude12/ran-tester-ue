@@ -365,10 +365,9 @@ class ComponentManager:
         spec.loader.exec_module(module)
 
         for _, cls in inspect.getmembers(module, inspect.isclass):
-            if cls.__module__ == module.__name__:
-                logging.info(f"Loaded worker class {cls.__name__} from {url}")
-                Globals.worker_thread_registry[component_path] = cls
-                return cls
+            logging.info(f"Loaded worker class {cls.__name__} from {url}")
+            Globals.worker_thread_registry[component_path] = cls
+            return cls
 
         raise RuntimeError(f"No class definitions found in worker file from {url}")
 
