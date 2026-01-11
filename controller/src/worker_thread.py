@@ -46,6 +46,7 @@ class WorkerThreadConfig:
 
 class WorkerThread:
     def __init__(self, influxdb_client, docker_client, process_config):
+        self.influxdb_metadata = process_config.get("influxdb_metadata", {})
         self.docker_container = None
         self.docker_logs = None
         self.config = WorkerThreadConfig()
@@ -136,6 +137,11 @@ class WorkerThread:
 
     def setup_env(self):
         self.config.container_env["ARGS"] = " ".join(self.config.cli_args)
+        self.config.container_env["INFLUX_PORT"] = self.influxdb_metadata.get("port")
+        self.config.container_env["INFLUX_HOST"] = self.influxdb_metadata.get("host")
+        self.config.container_env["INFLUX_ORG"] = self.influxdb_metadata.get("org")
+        self.config.container_env["INFLUX_TOKEN"] = self.influxdb_metadata.get("token")
+
         if self.config.rf_type == RfType.B200:
             self.config.container_env["UHD_IMAGES_DIR"] = "/usr/local/share/uhd"
 
@@ -161,12 +167,14 @@ class WorkerThread:
                 logging.warning("allowed_components are required when start scope is enabled")
                 continue
 
+            logging.info(f"Adding control API access to container {self.config.container_id}")
             self.config.container_networks.append(
                 self.config.docker_client.networks.get("rt_control")
             )
 
             self.config.container_env["CONTROL_TOKEN"] = api_token
-
+            self.config.container_env["CONTROL_HOST"] = "controller"
+            self.config.container_env["CONTROL_PORT"] = "1343"
 
 
         if self.config.rf_type == RfType.ZMQ:
@@ -288,7 +296,6 @@ class WorkerThread:
                 tag_color = f"\033[{color_code}m"
 
                 logging.debug(f"{tag_color}[{self.config.container_id}]\033[0m: {message_text}")
-                # logging.debug(f"[{self.config.container_id}]: {message_text}")
             except Exception as e:
                 logging.error(f"send_message failed with error: {e}")
 

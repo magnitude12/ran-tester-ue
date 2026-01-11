@@ -1,4 +1,4 @@
-# Testing API authentication for control_api_check
+# This file contains tests for the system to verify that the worker theads are supplied with any required resources
 api_auth:
   - name: "control_api_check_auth"
     token: "verification_token"

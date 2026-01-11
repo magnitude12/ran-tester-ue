@@ -19,9 +19,9 @@ class ComponentManager:
 
 
         if external_influx is None:
-            self.configure_influxdb_local()
+            self.influxdb_metadata = self.configure_influxdb_local()
         else:
-            self.configure_influxdb_external(external_influx)
+            self.influxdb_metadata = self.configure_influxdb_external(external_influx)
 
         self.docker_client = docker.from_env()
 
@@ -43,6 +43,13 @@ class ComponentManager:
             token=influxdb_token
         )
 
+        return {
+            "host": influxdb_host,
+            "port": influxdb_port,
+            "org": influxdb_org,
+            "token": influxdb_token
+        }
+
     def configure_influxdb_local(self):
         influxdb_host = os.getenv("DOCKER_INFLUXDB_INIT_HOST")
         influxdb_port = os.getenv("DOCKER_INFLUXDB_INIT_PORT")
@@ -58,6 +65,13 @@ class ComponentManager:
             org=influxdb_org,
             token=influxdb_token
         )
+
+        return {
+            "host": influxdb_host,
+            "port": influxdb_port,
+            "org": influxdb_org,
+            "token": influxdb_token
+        }
 
     def build(self, component):
         component_path = component.get("component")
@@ -190,11 +204,12 @@ class ComponentManager:
 
         process_class = None
         try:
-            process_class = Globals.worker_thread_registry[process_config["component"]] #globals()[process_config["component"]]
+            process_class = Globals.worker_thread_registry[process_config["component"]]
         except KeyError:
             logging.critical(f"No worker thread class found for: {process_config['component']}")
             return
 
+        process_config["influxdb_metadata"] = self.influxdb_metadata
         process_handle = process_class(self.influxdb_client, self.docker_client, process_config)
 
         self.process_metadata.append({
