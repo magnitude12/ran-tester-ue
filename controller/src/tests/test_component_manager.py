@@ -174,7 +174,7 @@ def test_build_if_not_exists_calls_build(manager, mocker):
 # -------------------------
 
 def test_start_missing_name(manager):
-    manager.start({"component": "FakeComponent"})
+    manager.start({"component": "cueltschey/rt-env-test"})
     assert manager.process_metadata == []
 
 
@@ -184,7 +184,7 @@ def test_start_success(manager, mocker):
     manager.start(
         {
             "name": "proc1",
-            "component": "FakeComponent",
+            "component": "cueltschey/rt-env-test",
         }
     )
 
@@ -217,7 +217,7 @@ def test_start_external_success(manager, mocker):
     manager.start_external(
         {
             "name": "proc1",
-            "component": "FakeComponent",
+            "component": "cueltschey/rt-env-test",
             "rf": 1,
             "target": "tgt",
         }
@@ -231,7 +231,7 @@ def test_start_external_missing_target(manager):
     manager.start_external(
         {
             "name": "proc1",
-            "component": "FakeComponent",
+            "component": "cueltschey/rt-env-test",
             "rf": 1,
             "target": "missing",
         }
