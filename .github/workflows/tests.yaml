@@ -51,7 +51,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker Compose
-        run: docker compose build
+        run: |
+          apt update -y && apt install uhd-utils -y
+          docker compose build
+          ./scripts/system-setup.sh
 
       - name: Run system tests
         run: |
