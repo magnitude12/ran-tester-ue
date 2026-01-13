@@ -53,7 +53,7 @@ jobs:
       - name: Build Docker Compose
         run: |
           sudo apt-get update && sudo apt-get install uhd-host -y
-          ./scripts/system_setup.sh
+          ./scripts/system_setup.sh --no-confirm
           docker compose build
 
       - name: Run system tests
