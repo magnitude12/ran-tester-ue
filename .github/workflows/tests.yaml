@@ -9,12 +9,12 @@ on:
       - main
 
 jobs:
-  test:
+  unit_tests:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - name: Checkout Repository
@@ -37,4 +37,25 @@ jobs:
         run: |
           cd controller/src
           pytest -v
+
+  system_tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        system_test_config:
+          - configs/system_tests/test_environment_no_rf.yaml
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker Compose
+        run: docker compose build
+
+      - name: Run system tests
+        run: |
+          sed -i "s|DOCKER_CONTROLLER_INIT_CONFIG=.*|DOCKER_CONTROLLER_INIT_CONFIG=${{ matrix.system_test_config }}|g" .env
+          docker compose up --abort-on-container-exit --exit-code-from controller
+
 
