@@ -9,23 +9,71 @@ import tempfile
 import inspect
 import logging
 import subprocess
+import threading
 
 from influxdb_client import InfluxDBClient, WriteApi
 from globals import Globals
 
 
 class ComponentManager:
-    def __init__(self, external_influx=None):
-
+    def __init__(self, external_influx=None, exit_from_component=False):
 
         if external_influx is None:
             self.influxdb_metadata = self.configure_influxdb_local()
         else:
             self.influxdb_metadata = self.configure_influxdb_external(external_influx)
 
+        self.exit_from_component = exit_from_component
+
         self.docker_client = docker.from_env()
 
         self.process_metadata = []
+
+        self.monitor_thread = threading.Thread(target=self.worker_thread_monitor, daemon=True)
+        self.monitor_thread.start()
+
+    def worker_thread_monitor(self):
+        poll_interval = 0.2
+
+        while True:
+            for p in list(self.process_metadata):
+                handle = p.get("handle")
+
+                if handle is None:
+                    continue
+
+                exit_code = getattr(handle, "exit_code", None)
+                if exit_code is None:
+                    continue
+
+                if not isinstance(exit_code, int):
+                    logging.error(
+                        f"Invalid exit code type for {p.get('id')}: {exit_code}"
+                    )
+                    continue
+
+                component_id = handle.config.container_id
+
+                if exit_code == 0:
+                    logging.info(
+                        f"Worker '{component_id}' exited cleanly (0), removing from monitor"
+                    )
+                    self.process_metadata.remove(p)
+                    continue
+
+                logging.error(
+                    f"Worker '{component_id}' exited with code {exit_code}"
+                )
+
+                self.process_metadata.remove(p)
+
+                if self.exit_from_component:
+                    logging.critical(
+                        f"Fatal component exit: {component_id} ({exit_code})"
+                    )
+                    os._exit(1)
+
+            time.sleep(poll_interval)
 
     def configure_influxdb_external(self, external_influx):
         influxdb_host = external_influx.get("host", None)

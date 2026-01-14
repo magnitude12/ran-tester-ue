@@ -46,6 +46,7 @@ class WorkerThreadConfig:
 
 class WorkerThread:
     def __init__(self, influxdb_client, docker_client, process_config):
+        self.exit_code : int | None = None
         self.influxdb_metadata = process_config.get("influxdb_metadata", {})
         self.docker_container = None
         self.docker_logs = None
@@ -233,7 +234,9 @@ class WorkerThread:
 
         self.stop_thread = threading.Event()
         self.log_thread = threading.Thread(target=self.log_report_thread, daemon=True)
+        self.watch_thread = threading.Thread(target=self.container_watch_thread, daemon=True)
         self.log_thread.start()
+        self.watch_thread.start()
 
     def start(self):
         logging.critical("start behavior must be defined by individual worker class")
@@ -319,3 +322,16 @@ class WorkerThread:
                 line = str(line[0])
 
             self.send_message(line.strip())
+
+    def container_watch_thread(self):
+        try:
+            result = self.docker_container.wait()  # BLOCKS
+            self.exit_code = result.get("StatusCode")
+            logging.info(
+                f"Component {self.config.container_id} exited with code {self.exit_code}"
+            )
+        except Exception as e:
+            logging.error(f"Error waiting for container: {e}")
+            self.exit_code = -1
+        finally:
+            self.stop_thread.set()

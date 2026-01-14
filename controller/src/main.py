@@ -109,7 +109,7 @@ if __name__ == '__main__':
             Globals.api_auth[i]["token"] = uuid.uuid4()
 
     external_influx_config = yaml_config.get("external_influx", None)
-    Globals.thread_manager = ComponentManager(external_influx_config)
+    Globals.thread_manager = ComponentManager(external_influx_config, yaml_config.get("exit_on_component_failure", False))
 
     build_config = yaml_config.get("build_spec", [])
     threads_config = yaml_config.get("run_spec", [])
@@ -134,4 +134,11 @@ if __name__ == '__main__':
         cli_manager = CLIManager(yaml_config)
         cli_manager.cli_loop()
     else:
-        start_server()
+        server_thread = threading.Thread(target=start_server, daemon=True)
+        server_thread.start()
+
+        time.sleep(0.2)
+        while len(Globals.thread_manager.process_metadata) > 0:
+            time.sleep(0.2)
+
+        sys.exit(0)

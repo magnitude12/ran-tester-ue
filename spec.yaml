@@ -1,4 +1,5 @@
 # Testing API authentication for control_api_check
+exit_on_component_failure: true
 api_auth:
   - name: "control_api_check_auth"
     token: "verification_token"
