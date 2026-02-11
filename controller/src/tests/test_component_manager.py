@@ -118,25 +118,13 @@ def test_build_missing_docker_image(manager, mocker):
 def test_build_enable_pull(manager, mock_docker):
     manager.build(
         {
-            "component": "comp",
+            "component": "cueltschey/rt-env-test",
             "docker_image": "img",
             "enable_pull": True,
         }
     )
 
     mock_docker.images.pull.assert_called_once_with("img")
-
-
-def test_build_dockerfile_missing(manager, mocker):
-    mocker.patch("os.path.exists", return_value=False)
-
-    with pytest.raises(RuntimeError):
-        manager.build(
-            {
-                "component": "comp",
-                "docker_image": "img",
-            }
-        )
 
 
 # -------------------------
@@ -150,7 +138,7 @@ def test_build_if_not_exists_skips(manager, mock_docker):
 
     manager.build_if_not_exists(
         {
-            "component": "comp",
+            "component": "cueltschey/rt-env-test",
             "docker_image": "img",
         }
     )
@@ -161,7 +149,7 @@ def test_build_if_not_exists_calls_build(manager, mocker):
 
     manager.build_if_not_exists(
         {
-            "component": "comp",
+            "component": "cueltschey/rt-env-test",
             "docker_image": "img",
         }
     )
@@ -174,7 +162,7 @@ def test_build_if_not_exists_calls_build(manager, mocker):
 # -------------------------
 
 def test_start_missing_name(manager):
-    manager.start({"component": "FakeComponent"})
+    manager.start({"component": "cueltschey/rt-env-test"})
     assert manager.process_metadata == []
 
 
@@ -184,7 +172,7 @@ def test_start_success(manager, mocker):
     manager.start(
         {
             "name": "proc1",
-            "component": "FakeComponent",
+            "component": "cueltschey/rt-env-test",
         }
     )
 
@@ -217,7 +205,7 @@ def test_start_external_success(manager, mocker):
     manager.start_external(
         {
             "name": "proc1",
-            "component": "FakeComponent",
+            "component": "cueltschey/rt-env-test",
             "rf": 1,
             "target": "tgt",
         }
@@ -231,7 +219,7 @@ def test_start_external_missing_target(manager):
     manager.start_external(
         {
             "name": "proc1",
-            "component": "FakeComponent",
+            "component": "cueltschey/rt-env-test",
             "rf": 1,
             "target": "missing",
         }

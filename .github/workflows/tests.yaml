@@ -1,0 +1,64 @@
+name: Run all unit tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r controller/requirements.txt
+
+      - name: Run controller unit tests
+        run: |
+          cd controller/src
+          pytest -v
+
+  system_tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        system_test_config:
+          - configs/system_tests/test_environment_no_rf.yaml
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker Compose
+        run: |
+          sudo apt-get update && sudo apt-get install uhd-host -y
+          ./scripts/system_setup.sh --no-confirm
+          docker compose build
+
+      - name: Run system tests
+        run: |
+          sed -i "s|DOCKER_CONTROLLER_INIT_CONFIG=.*|DOCKER_CONTROLLER_INIT_CONFIG=${{ matrix.system_test_config }}|g" .env
+          docker compose up --abort-on-container-exit --exit-code-from controller
+
+

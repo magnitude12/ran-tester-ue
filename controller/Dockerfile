@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     iproute2 \
     docker-cli \
     docker-cli-buildx \
-    gcc
+    gcc \
+		git
 
 WORKDIR /app
 
