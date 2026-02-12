@@ -28,9 +28,9 @@ jobs:
       - name: Build Docker images
         run: docker compose build
 
-      - name: Save Docker images
+      - name: Save local images
         run: |
-          docker save $(docker compose images -q) -o system_images.tar
+          docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "<none>") -o system_images.tar
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
