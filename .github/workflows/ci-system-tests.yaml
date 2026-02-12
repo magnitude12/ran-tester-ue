@@ -30,7 +30,7 @@ jobs:
 
       - name: Save local images
         run: |
-          docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "<none>") -o system_images.tar
+          docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "oran-testing") -o system_images.tar
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
@@ -77,7 +77,7 @@ jobs:
           name: system-images
 
       - name: Load Docker images
-        run: docker load -i system_images.tar
+        run: docker load -i system_images.tar && ./scripts/system_setup.sh --no-confirm
 
       - name: Run system test
         run: |
