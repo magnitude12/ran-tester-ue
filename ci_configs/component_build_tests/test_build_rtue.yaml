@@ -1,0 +1,4 @@
+build_spec:
+  - component: "oran-testing/rtue"
+    branch: "main"
+    pull: false

@@ -1,0 +1,19 @@
+build_spec:
+  - component: "cueltschey/rt-env-test"
+    branch: "main"
+    pull: false
+
+
+run_spec:
+  - component: "cueltschey/rt-env-test"
+    config_file: "spec.yaml"
+    name: "influx_check"
+    args:
+      - "--check-env INFLUX_HOST=influxdb"
+      - "--check-env INFLUX_PORT=8086"
+      - "--check-env INFLUX_ORG=rtu"
+      - "--check-env INFLUX_TOKEN"
+      - "--check-influxdb"
+      - "--influx-bucket rtusystem"
+    rf:
+      type: "none"

@@ -44,7 +44,25 @@ jobs:
     strategy:
       matrix:
         system_test_config:
-          - configs/system_tests/test_environment_no_rf.yaml
+          # Environment tests: check that controller passes required env
+          - ci_configs/system_environment_tests/test_control_api.yaml
+          - ci_configs/system_environment_tests/test_uhd_images.yaml
+          - ci_configs/system_environment_tests/test_influx_access.yaml
+          - ci_configs/system_environment_tests/test_conf_pass.yaml
+
+          # Build tests: check that all components still build
+          - ci_configs/component_build_tests/test_build_ssb_spoofer.yaml
+          - ci_configs/component_build_tests/test_build_jammer.yaml
+          - ci_configs/component_build_tests/test_build_uuagent.yaml
+          - ci_configs/component_build_tests/test_build_sni5gect.yaml
+          - ci_configs/component_build_tests/test_build_rtue.yaml
+
+          # Pull tests: check that all components are pullable
+          - ci_configs/component_pull_tests/test_pull_ssb_spoofer.yaml
+          - ci_configs/component_pull_tests/test_pull_jammer.yaml
+          - ci_configs/component_pull_tests/test_pull_uuagent.yaml
+          - ci_configs/component_pull_tests/test_pull_sni5gect.yaml
+          - ci_configs/component_pull_tests/test_pull_rtue.yaml
 
     steps:
       - name: Checkout repository
