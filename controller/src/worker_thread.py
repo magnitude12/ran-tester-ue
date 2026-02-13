@@ -149,8 +149,6 @@ class WorkerThread:
         self.config.container_networks.append(
             self.config.docker_client.networks.get("rt_metrics")
         )
-<<<<<<< HEAD
-=======
         for api in Globals.api_auth:
             if self.config.container_id not in api.get("pass_to", []):
                 continue
@@ -176,8 +174,6 @@ class WorkerThread:
             self.config.container_env["CONTROL_TOKEN"] = api_token
             self.config.container_env["CONTROL_HOST"] = "controller"
             self.config.container_env["CONTROL_PORT"] = "1343"
-
->>>>>>> joshuamoorexyz-main
 
         if self.config.rf_type == RfType.ZMQ:
             try:
@@ -237,10 +233,7 @@ class WorkerThread:
         self.log_thread = threading.Thread(target=self.log_report_thread, daemon=True)
         self.watch_thread = threading.Thread(target=self.container_watch_thread, daemon=True)
         self.log_thread.start()
-<<<<<<< HEAD
-=======
         self.watch_thread.start()
->>>>>>> joshuamoorexyz-main
 
     def start(self):
         logging.critical("start behavior must be defined by individual worker class")
