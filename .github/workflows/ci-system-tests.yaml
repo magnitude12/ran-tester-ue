@@ -18,7 +18,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker images
-        run: docker compose build
+        run: |
+          sed -i "s|DOCKER_SYSTEM_DIRECTORY=.*|DOCKER_SYSTEM_DIRECTORY=/tmp/|g" .env
+          docker compose build
 
       #- name: Save local images
       #  run: |
