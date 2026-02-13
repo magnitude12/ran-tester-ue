@@ -6,7 +6,6 @@ import logging
 import os
 import sys
 import argparse
-import re
 
 from config import Config
 from typing import Dict, Any, List, Optional
@@ -23,6 +22,10 @@ from executor import Executor
 from planner import Planner
 from api_interface import ApiInterface
 from knowledge_augmentor import KnowledgeAugmentor
+
+import pathlib
+import requests
+import re
 
 
 import chromadb
@@ -275,7 +278,7 @@ def _compute_reward(metrics: dict, prev_json: Optional[dict], cand_json: Optiona
         added = list(cand_keys - prev_keys)
         pen_added = 0.1 * len(added)
 
-    # proximity shaping (jammer-centric; harmless for others)
+    # proximity shaping (jammer-centric)
     if isinstance(cand_json, dict):
         dev = (str(cand_json.get("device_args", "")) or "").lower()
         f0 = cand_json.get("center_frequency")
@@ -478,10 +481,15 @@ class KnowledgeAugmentor:
         return "\n\n".join(ctx).strip()
 
     @staticmethod
-    def build_augmented_prompt(context: str, system_prompt_block: str, user_request: str) -> str:
+    def build_augmented_prompt(context: str, system_prompt_block: str, user_request: str, planner_params: Optional[Dict[str, Any]] = None) -> str:
+        # Planner parameters are injected as authoritative constraints when present.
+        params_block = ""
+        if planner_params:
+            params_block = f"\n--- PLANNER PARAMETERS (Authoritative) ---\n{json.dumps(planner_params, indent=2)}\n--- END OF PLANNER PARAMETERS ---\n"
         return f"""You are an expert RF systems assistant.
 First, review the provided CONTEXT for critical engineering rules.
 Then, use that context to follow the INSTRUCTIONS to generate a valid JSON configuration that fulfills the USER REQUEST.
+If PLANNER PARAMETERS are provided, you MUST honor them (they override defaults and inferred values).
 
 --- CONTEXT (Rules & Formulas) ---
 {context}
@@ -493,8 +501,7 @@ Then, use that context to follow the INSTRUCTIONS to generate a valid JSON confi
 
 --- USER REQUEST ---
 {user_request}
-
-Provide only the final JSON object.
+{params_block}Provide only the final JSON object.
 
 --- JSON OUTPUT ---""".strip()
 
@@ -505,8 +512,34 @@ GENERATED_RAW: Dict[str, str] = {}
 PROMPTS_BY_COMP: Dict[str, str] = {}
 VALIDATED_BY_COMP: Dict[str, dict] = {}
 
+PLAN_KEY_RE = re.compile(r"^(rtue|sniffer|jammer)_([a-z0-9_]+)$")
 
-def run_generate_step(component: str, kb: KnowledgeAugmentor):
+
+def derive_component_params(plan_obj: dict) -> Dict[str, Dict[str, Any]]:
+    # Converts flat planner keys into per-component parameter maps.
+    comp_params: Dict[str, Dict[str, Any]] = {}
+    if not isinstance(plan_obj, dict):
+        return comp_params
+    for k, v in plan_obj.items():
+        m = PLAN_KEY_RE.match(k)
+        if not m:
+            continue
+        comp, param = m.group(1), m.group(2)
+        comp_params.setdefault(comp, {})[param] = v
+    return comp_params
+
+
+def derive_steps_from_components(comp_params: Dict[str, Dict[str, Any]]) -> List[str]:
+    # Stable execution order.
+    priority = ["rtue", "sniffer", "jammer"]
+    steps: List[str] = []
+    for comp in priority:
+        if comp in comp_params:
+            steps += [f"generate_{comp}", f"validate_{comp}", f"send_{comp}"]
+    return steps
+
+
+def run_generate_step(component: str, kb: KnowledgeAugmentor, extra_params: Optional[Dict[str, Any]] = None):
     logging.info(f"Plan component: {component}")
     user_prompt = Config.options.get("user_prompt", "")
     system_prompt = Config.options.get(component, "")
@@ -514,12 +547,15 @@ def run_generate_step(component: str, kb: KnowledgeAugmentor):
 
     system_instructions = system_prompt.split("### USER REQUEST:")[0] if "### USER REQUEST:" in system_prompt else system_prompt
     retrieval_query = f"Rules, constraints, and known-good examples for a '{component}' configuration to fulfill: {user_prompt}"
+    if extra_params:
+        retrieval_query += f" with planner parameters: {json.dumps(extra_params)}"
     retrieved_context = kb.retrieve_context_for_component(component, retrieval_query)
 
     prompt_to_use = KnowledgeAugmentor.build_augmented_prompt(
         context=retrieved_context,
         system_prompt_block=system_instructions,
-        user_request=user_prompt
+        user_request=user_prompt,
+        planner_params=extra_params or {}
     )
 
     logging.info("=" * 20 + " EXECUTING PROMPT " + "=" * 20)
@@ -922,10 +958,24 @@ def run_send_step(component: str, control_url: str, auth_header: str):
             logging.error("=" * 20 + " SCRIPT FAILED " + "=" * 20)
             logging.error(f"Could not obtain a valid and non-empty '{config_type}' configuration after all attempts.")
             sys.exit(1)
-    for step in intent_output:
+
+    # Derive per-component parameters and step list from the planner when applicable.
+    component_params: Dict[str, Dict[str, Any]] = {}
+    step_list: List[str] = []
+
+    if isinstance(plan_output, dict):
+        component_params = derive_component_params(plan_output)
+        step_list = derive_steps_from_components(component_params)
+    elif isinstance(plan_output, list):
+        step_list = plan_output
+    else:
+        logging.error("Planner returned an unexpected type. Aborting.")
+        sys.exit(1)
+
+    for step in step_list:
         if step.startswith("generate_"):
             comp = step.split("_", 1)[1]
-            run_generate_step(comp, kb)
+            run_generate_step(comp, kb, extra_params=component_params.get(comp, {}))
         elif step.startswith("validate_"):
             comp = step.split("_", 1)[1]
             run_validate_step(comp)
