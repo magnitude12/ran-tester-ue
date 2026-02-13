@@ -17,27 +17,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y uhd-host
-
-      - name: Run system setup
-        run: ./scripts/system_setup.sh --no-confirm
-
       - name: Build Docker images
         run: docker compose build
 
-      - name: Save local images
-        run: |
-          docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "oran-testing") -o system_images.tar
+      #- name: Save local images
+      #  run: |
+      #    docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "oran-testing") -o system_images.tar
 
-      - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: system-images
-          path: system_images.tar
-          retention-days: 1
+      #- name: Upload Docker image artifact
+      #  uses: actions/upload-artifact@v4
+      #  with:
+      #    name: system-images
+      #    path: system_images.tar
+      #    retention-days: 1
 
   system_tests:
     name: Run System Tests
@@ -71,13 +63,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Docker image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: system-images
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y uhd-host
 
-      - name: Load Docker images
-        run: docker load -i system_images.tar && ./scripts/system_setup.sh --no-confirm
+      - name: Run system setup
+        run: ./scripts/system_setup.sh --no-confirm
+
+      #- name: Download Docker image artifact
+      #  uses: actions/download-artifact@v4
+      #  with:
+      #    name: system-images
+
+      #- name: Load Docker images
+      #  run: docker load -i system_images.tar && ./scripts/system_setup.sh --no-confirm
 
       - name: Run system test
         run: |
