@@ -4,5 +4,4 @@ venv/
 .llm_worker_cache
 .generated
 .uhd_images
-.env
 .uuagent_results
