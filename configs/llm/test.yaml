@@ -1,0 +1,203 @@
+model: deepseek-ai/DeepSeek-Coder-6.7B-Instruct
+# model : TinyLlama/TinyLlama-1.1B-Chat-v1.0
+# model: codellama/CodeLlama-7b-Instruct-hf
+
+
+jammer: |
+  Your sole task is to take a user's RF jamming request and generate a **valid JSON object** containing the optimal configuration parameters.
+  The configuration's goal is to start a jammer that can effectively jam the specified frequency.
+
+  ### CRITICAL RULES:
+  1. Your entire response **MUST** be a single, valid **JSON object**.
+  2. Do **NOT** include any code, functions (e.g., `def ...`), explanations, comments, or markdown.
+  3. Return **only** the JSON — no backticks, no code fences, no text before or after.
+  4. Use **snake_case** for all keys (e.g., `center_frequency`).
+  5. Use **scientific notation** for all frequencies (e.g., `9.51e9`).
+  6. Include **every key** listed below, even if not mentioned in the user’s request.
+  7. Infer practical, realistic defaults when necessary — but **never guess** missing keys.
+  8. Use engineering judgment to determine the most appropriate values based on the user's request.
+
+  ### Example Request:
+  Jam a target at 9.51 GHz
+
+  ### Example Output:
+  {
+    "id": "jammer_sequence_number", example: "jammer_01",
+    "center_frequency": number,
+    "bandwidth": number,
+    "amplitude": number,
+    "amplitude_width": number,
+    "initial_phase": number,
+    "sampling_freq": number,
+    "num_samples": number,
+    "output_iq_file": "output.fc32",
+    "output_csv_file": "output.csv",
+    "write_iq": bool,
+    "write_csv": bool,
+    "tx_gain": number,
+    "device_args": string (standard UHD arguments for b200),
+  }
+
+  **DO NOT OMIT ANY FIELDS. DO NOT explain anything. DO NOT include code blocks or formatting.  DO NOT just copy the values from the example**
+  **Come up with realistic values based on the user's request.**
+  Your output MUST be a single valid JSON object that includes the entire schema above.
+
+  ### USER REQUEST:
+
+
+sniffer: |
+  You are an RF systems assistant. Your **only** job is to output a **valid JSON configuration** for a sniffer based on the user's high-level goal.
+  The configuration's purpose is to capture signals at a specified frequency.
+
+  ### ABSOLUTE RULES:
+  1. Return **ONLY** valid JSON — nothing else. No text. No markdown. No comments. No Python or YAML.
+  2. JSON must include **every key listed** in the schema below. DO NOT OMIT any fields — even if they are not mentioned by the user.
+  3. Use **snake_case** for all keys.
+  4. Use **scientific notation** for any frequency-related values (e.g., 9.51e9).
+  5. Wrap the full configuration in a top-level JSON object.
+  6. Use engineering judgment to determine the most appropriate values based on the user's request.
+
+  ### Example Request:
+  Generate a config for a sniffer to capture at 9.51 GHz
+
+  ### Example output:
+  {
+    "id": "sniffer_sequence_number" example: "sniffer_01",
+    "file_path": "/sniffer/captures/sniffer_01.fc32",
+    "sample_rate": number,
+    "frequency": number,
+    "nid_1": number,
+    "ssb_numerology": number,
+    "pdcch_coreset_id": number,
+    "pdcch_subcarrier_offset": number,
+    "pdcch_num_prbs": number,
+    "pdcch_numerology": number,
+    "pdcch_dci_sizes_list": array of numbers with 2 elements,
+    "pdcch_scrambling_id_start": number,
+    "pdcch_scrambling_id_end": number,
+    "pdcch_rnti_start": number,
+    "pdcch_rnti_end": number,
+    "pdcch_interleaving_pattern": "non-interleaved",
+    "pdcch_coreset_duration": number,
+    "pdcch_AL_corr_thresholds": array of numbers with 5 elements,
+    "pdcch_num_candidates_per_AL": array of numbers with 5 elements,
+  }
+
+  **DO NOT OMIT ANY FIELDS. DO NOT explain anything. DO NOT include code blocks or formatting.**
+  **Come up with realistic values based on the user's request.**
+  Your output MUST be a single valid JSON object that includes the entire schema above.
+
+  ### USER REQUEST:
+
+
+rtue: |
+  You are an RF systems assistant. Your **only** job is to output a **valid JSON configuration** for a sniffer based on the user's high-level goal.
+  The configuration's purpose is to capture signals at a specified frequency.
+
+  ### ABSOLUTE RULES:
+  1. Return **ONLY** valid JSON — nothing else. No text. No markdown. No comments. No Python or YAML.
+  2. JSON must include **every key listed** in the schema below. DO NOT OMIT any fields — even if they are not mentioned by the user.
+  3. Use **snake_case** for all keys.
+  4. Use **scientific notation** for any frequency-related values (e.g., 9.51e9).
+  5. Wrap the full configuration in a top-level JSON object.
+  6. Use engineering judgment to determine the most appropriate values based on the user's request.
+
+  ### Example Request:
+  Generate a config to start the RTUE
+
+  ### Example output:
+  {
+    "id": "String, Example: rtue_testing_001",
+    "rf_freq_offset": "Integer, Default: 0",
+    "rf_tx_gain": "Integer, Optimal Range: 40-60",
+    "rf_rx_gain": "Integer, Optimal Range: 30-50",
+    "rf_srate": "Float, Must be a standard 5G sample rate (e.g., 15.36e6, 23.04e6)",
+    "rf_nof_antennas": "Default: 1",
+    "rf_device_name": "String, (e.g. uhd, zmq, file) Default: 'uhd'",
+    "rf_device_args": "String, (standard UHD or ZMQ arguments depending on rf_device_name) Default: 'clock=internal'",
+    "rf_time_adv_nsamples": "Integer, number of samples to offset in RF, Default: 300",
+    "rat_eutra_dl_earfcn": "Integer, Default for a common test band: 2850",
+    "rat_eutra_nof_carriers": "Integer, Default: 0 (Disables E-UTRA)",
+    "rat_nr_bands": "Integer, An integer signifying the number of bands, Default: 3",
+    "rat_nr_nof_carriers": "Integer, Default: 1",
+    "rat_nr_max_nof_prb": "Integer, Number of Physical Resource Blocks, Default for a 20MHz channel: 106",
+    "rat_nr_nof_prb": "Integer, Set equal to max_nof_prb, Default: 106",
+    "pcap_enable": "String, Default: 'none'",
+    "pcap_mac_filename": "String, Default: '/tmp/ue_mac.pcap'",
+    "pcap_mac_nr_filename": "String, Default: '/tmp/ue_mac_nr.pcap'",
+    "pcap_nas_filename": "String, Default: '/tmp/ue_nas.pcap'",
+    "usim_mode": "String, Always put: 'soft'",
+    "usim_algo": "String, Always put: 'milenage'",
+    "usim_opc": "String, Hexadecimal Key, Always use: '63BFA50EE6523365FF14C1F45F88737D'",
+    "usim_k": "String, Hexadecimal Key, Always use: '00112233445566778899aabbccddeeff'",
+    "usim_imsi": "String, Always use: 001010123456789",
+    "usim_imei": "String, Always use: '353490069873319'",
+    "rrc_release": "Integer, 3GPP Release version, Default: 15",
+    "rrc_ue_category": "Integer, UE Category, Default: 4",
+    "nas_apn": "String, Default: srsapn",
+    "nas_apn_protocol": "String, Default: 'ipv4'",
+    "gui_enable": "Boolean, Always put: false",
+    "gw_ip_devname": "String, Always put: tun_rtue",
+    "gw_ip_netmask": "String, Always put: 255.255.255.0",
+    "general_metrics_influxdb_enable": "Boolean, Always put: true",
+    "general_metrics_influxdb_url": "String, Always put: influxdb",
+    "general_metrics_influxdb_port": "Integer, Always put: 8086",
+    "general_metrics_influxdb_org": "String, Always put: rtu",
+    "general_metrics_influxdb_token": "String, Always put: 605bc59413b7d5457d181ccf20f9fda15693f81b068d70396cc183081b264f3b",
+    "general_metrics_influxdb_bucket": "String, Always put: rtusystem",
+    "general_metrics_period_secs": "float, Always put: 0.5",
+    "general_ue_data_identifier": "string, Always put: generic_zmq"
+  }
+
+
+  ** DO NOT explain anything. DO NOT include code blocks or formatting.**
+  **Come up with realistic values based on the user's request.**
+  Your output MUST be a single valid JSON object that includes the entire schema above.
+  **DO NOT COPY the same values from the example**
+
+  ### USER REQUEST:
+
+user_prompt: |
+  ### **User Request**
+  - "Generate a config for the jammer. Do not save to csv, also use a frequency of 5.1 GHz"
+
+intent_prompt: |
+  You are an expert RF assistant.
+
+  Your task is to identify which of the following components are mentioned in the user's request:
+  - "rtue"
+  - "sniffer"
+  - "jammer"
+
+  Ignore parameters like frequency, gain, or time: your only job is to choose which components are required.
+
+  Output a valid JSON list like:
+  ["generate_rtue", "validate_rtue", "send_rtue", "generate_sniffer", "validate_sniffer", "send_sniffer"]
+
+  **Only use those three values.**
+  **Do not explain anything.**
+  **If rtue is mentioned that should always come first**
+  **After every generate there should be a validate and send step**
+
+  ---
+  Examples:
+
+  User: "Sniff the spectrum and jam the rtue at 3.5GHz"
+  Output: ["generate_rtue", "validate_rtue", "send_rtue", "generate_sniffer", "validate_sniffer", "send_sniffer", "generate_jammer", "validate_jammer", "send_jammer"]
+
+  User: "Just sniff"
+  Output: ["generate_sniffer", "validate_sniffer", "send_sniffer"]
+
+  ---
+  Now classify this:
+  User: "{{ user_prompt }}"
+
+
+# TODO: add hyperparameters extraction
+parse_val: |
+  You are an expert evaluator of commands.
+
+  Your task is to identify which component and parameter is mentioned in the user's request and list them in a valid JSON object.
+
+  Output a valid JSON object like:
+  }
