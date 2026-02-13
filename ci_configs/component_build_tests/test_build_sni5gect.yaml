@@ -1,0 +1,4 @@
+build_spec:
+  - component: "cueltschey/sni5gect-compact"
+    branch: "main"
+    pull: false

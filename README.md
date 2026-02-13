@@ -1,6 +1,8 @@
 # NTIA RAN Tester UE
 
-This project is a security testing tool based on modifications and attacks from the User Equipment, designed to test 5G and open radio access networks (RANs) via the Uu air interface between the UE and the network. While enabling various types of testing, the primary focus of this software is on RAN security testing.  
+This project is a UE centric RAN testing framework designed to quickly and easily test RANs against common attacks. The system works using declarative test configurations, which specify all the hardware and software needed to run complex series of security tests against a RAN.
+
+See the our comprehensive [documentation ](https://docs.rantesterue.org) for more info on our attacks and metrics.
 
 ---
 
@@ -8,71 +10,80 @@ This RAN tester UE (rtUE) is fully software-based and compatible with widely ava
 
 ---
 
-See the our comprehensive [documentation ](https://docs.rantesterue.org) for more info on our attacks and metrics.
+## System Requirements
+
+### Machine and OS Recommendations
+
+The RAN tester UE is tested on `Ubuntu 24.04`. However, any linux distro or MacOS machine should be able to run the software with few issues. If there are problems on these platforms, feel free to make an issue for us to address.
+
+We recommend using the ubuntu realtime kernel, which is available for purchase from canonical. Alternatively, use can use the lowlatency kernel, which is free.
+
+A powerful machine is recommended, since many of the attacks are resource intensive.
+
+### Required Dependencies
+
+Install the following on your system before running the system:
+- docker engine
+- docker compose
+- UHD utilites (for downloading firmware images)
 
 ## Quickstart Guide
 
-***First, clone the core repository and it's submodules.***
-
-Option A: SSH URL (Recommended if you have SSH set up)
+***First, clone the core repository***
 
 ```bash
-git clone --recurse-submodules git@github.com:oran-testing/ran-tester-ue.git
-```
-
-Option B: HTTPS
-
-```bash
-git clone --recurse-submodules https://github.com/oran-testing/ran-tester-ue.git
+git clone https://github.com/oran-testing/ran-tester-ue.git
 ```
 
 ***Navigate to the directory and run the system setup script:***
 ```bash
 cd ran-tester-ue
-sudo ./scripts/system_setup.sh
+./scripts/system_setup.sh
 ```
 
-***Now, pull the necessary containers from our registry:***
+***Now, pull the system containers from our registry:***
 
 ```bash
-sudo docker compose --profile components pull  # Pulls all attack components
-sudo docker compose --profile system pull      # Pulls Grafana, InfluxDB, and Controller
+sudo docker compose pull      # Grafana, InfluxDB, and Controller
 ```
 
 Alternatively, you can build the images yourself:
 
 ```bash
-sudo docker compose --profile components build  # Builds all attack components
-sudo docker compose --profile system build      # Builds Grafana, InfluxDB, and Controller
+sudo docker compose build
 ```
 
-The environment is defined in the controller config (`ran-tester-ue/configs`):
+***Finally, modify the configuration to run a test:***
+
+The test specification is defined in the YAML config (`ran-tester-ue/spec.yaml`):
 
 This configuration tells the controller which services to run, and in what order. This allows for fully automated tests with many components.
 ```yaml
-processes:                                                # List of all processes to start
-- type: "rtue"
-    id: "rtue_uhd_1"
-    config_file: "configs/uhd/ue_uhd.conf"                # Path to the configuration file for the rtUE
-    rf:
-        type: "b200"                                      # Type of RF device (= USRP B210)
-        images_dir: "/usr/share/uhd/images/"              # Directory for RF images
+enable_cli: true
 
-- type: "sniffer"
-    id: "dci_sniffer_1"
-    config_file: "../5g-sniffer/MSU-Private5G184205.toml" # Path to the configuration file for the sniffer
+build_spec:
+  - component: "sni5gect"
+    docker_image: "ghcr.io/oran-testing/sni5gect"
+    pull: false
+
+run_spec:
+  - component: "rtue"
+    name: "rtue_uhd_1"
+    config_file: "configs/srsran/ue_uhd.conf"
     rf:
-        type: "b200"
-        images_dir: "/usr/share/uhd/images/"
+      type: "b200"
+  - component: "sni5gect"
+    name: "downlink_sniffer"
+    config_file: "configs/sni5gect/srsgnb_band3.yaml"
+    rf:
+      type: "b200"
 ```
 
-The config used by the controller is defined in `ran-tester-ue/.env` as ```DOCKER_CONTROLLER_INIT_CONFIG```. Change this value to use a different configuration.
+The above configuration will run a sni5gect sniffer and UE with the requested environment, writing all data to influxdb and displaying metrics in realtime with grafana.
 
-
-The following will run a sniffer and UE with the requested environment, writing all data to influxdb and displaying metrics in realtime with grafana:
-
+To start the system run:
 ```bash
-sudo docker compose --profile system up
+sudo docker compose up
 ```
 
 The Grafana dashboard can be accessed at [http://localhost:3300](http://localhost:3300).

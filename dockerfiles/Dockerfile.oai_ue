@@ -1,0 +1,28 @@
+FROM ubuntu:24.04
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y git libforms-dev libforms-bin tmux apt-utils \
+    cmake make ninja-build meson libuhd-dev uhd-host netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/*
+
+# Clone and build OpenAirInterface
+RUN git clone https://gitlab.eurecom.fr/oai/openairinterface5g.git /opt/openairinterface5g
+
+WORKDIR /opt/openairinterface5g/cmake_targets
+
+# Install OAI dependencies
+RUN ./build_oai -I
+
+# Build OAI NR UE
+RUN ./build_oai -w USRP --noavx512 --ninja --nrUE \
+    --cmake-opt "-DCMAKE_C_FLAGS='-mavx2 -mpclmul -msse4.2' -DCMAKE_CXX_FLAGS='-mavx2 -mpclmul -msse4.2'" -C
+
+# Set working directory
+WORKDIR /opt/openairinterface5g
+
+# Environment variable for UE arguments (set by ran-tester-ue controller)
+ENV OAI_UE_ARGS=""
+
+# Entrypoint
+CMD ["sh", "-c", "/opt/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem $ARGS"]

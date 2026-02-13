@@ -1,0 +1,4 @@
+build_spec:
+  - component: "oran-testing/ssb-spoofer"
+    branch: "main"
+    pull: true

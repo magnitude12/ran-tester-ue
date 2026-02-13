@@ -1,0 +1,15 @@
+build_spec:
+  - component: "cueltschey/rt-env-test"
+    branch: "main"
+    pull: false
+
+
+run_spec:
+  - component: "cueltschey/rt-env-test"
+    config_file: "spec.yaml"
+    name: "volumes_check"
+    args:
+      - "--check-config /test.yaml"
+      - "--check-env CONFIG=/test.yaml"
+    rf:
+      type: "none"

@@ -1,0 +1,4 @@
+build_spec:
+  - component: "oran-testing/uu-agent"
+    branch: "main"
+    pull: false

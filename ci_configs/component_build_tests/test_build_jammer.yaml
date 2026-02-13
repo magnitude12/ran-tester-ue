@@ -1,0 +1,4 @@
+build_spec:
+  - component: "oran-testing/jammer"
+    branch: "main"
+    pull: false

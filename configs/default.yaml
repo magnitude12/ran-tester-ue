@@ -1,6 +1,0 @@
-processes:
-  - type: "rtue"
-    id: "rtue_zmq"
-    config_file: "configs/uhd/ue_uhd.conf"
-    rf:
-      type: "b200"

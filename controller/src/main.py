@@ -1,51 +1,32 @@
 #!/usr/bin/python3
 
+import time
 import os
 import http
-import ssl
-import time
 import sys
-import shutil
-import docker
-from datetime import datetime, timezone
-
-import uuid
 import argparse
 import pathlib
 import yaml
 import logging
-import signal
+import colorlog
+import uuid
+import threading
 
-from rtue_worker_thread import rtue
-from jammer_worker_thread import jammer
-from sniffer_worker_thread import sniffer
-from decoder_worker_thread import decoder
-from llm_worker_thread import llm_worker
-from rach_worker_thread import rach_agent
-from ofh_worker_thread import ofh_attacker
-from uu_agent_worker_thread import uu_agent
+from datetime import datetime, timezone
 
-from influxdb_client import InfluxDBClient, WriteApi
 
 from control_handler import SystemControlHandler
-from globals import Config, Globals
+from component_manager import ComponentManager
+from cli_manager import CLIManager
+from api_interface import ApiInterface
 
+from globals import Globals
 
-def handle_signal(signum, frame):
-    for process_meta in Globals.process_metadata:
-        process_meta["handle"].stop()
-        logging.debug(f"Killed process {process['id']}")
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, handle_signal)
-signal.signal(signal.SIGTERM, handle_signal)
-
-
-def configure() -> None:
+def configure():
     """
     Reads in CLI arguments
-    Parses YAML config
-    Configures logging
+    Configures log level with colored output
+    Returns YAML config
     """
     script_dir = pathlib.Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(
@@ -56,162 +37,105 @@ def configure() -> None:
         required=True,
         help="Path of YAML config for the controller")
     parser.add_argument("--log-level",
-                    default="DEBUG",
-                    help="Set the logging level. Options: DEBUG, INFO, WARNING, ERROR, CRITICAL")
+                        default="DEBUG",
+                        help="Set the logging level. Options: DEBUG, INFO, WARNING, ERROR, CRITICAL")
     args = parser.parse_args()
-    Config.log_level = getattr(logging, args.log_level.upper(), 1)
+    log_level = getattr(logging, args.log_level.upper(), 1)
 
-    if not isinstance(Config.log_level, int):
+    if not isinstance(log_level, int):
         raise ValueError(f"Invalid log level: {args.log_level}")
 
-    logging.basicConfig(level=Config.log_level,
-                    format='%(levelname)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
+    console_handler = logging.StreamHandler()
 
-    Config.filename = args.config
-    with open(str(args.config), 'r') as file:
-        Config.options = yaml.safe_load(file)
-
-
-def start_subprocess_threads():
-    """
-    Creates one central influxDB client
-    Creates one central docker client
-    Starts any necessary subprocess threads using Config
-    Returns a list of metadata for each thread
-    """
-    if Config.options is None:
-        logging.error("Config is None: parsing failed... Exiting")
-        sys.exit(1)
-
-    influxdb_host = os.getenv("DOCKER_INFLUXDB_INIT_HOST")
-    influxdb_port = os.getenv("DOCKER_INFLUXDB_INIT_PORT")
-    influxdb_org = os.getenv("DOCKER_INFLUXDB_INIT_ORG")
-    influxdb_token = os.getenv("DOCKER_INFLUXDB_INIT_ADMIN_TOKEN")
-
-    logging.debug(f"DOCKER_INFLUXDB_INIT_HOST: {influxdb_host}")
-    logging.debug(f"DOCKER_INFLUXDB_INIT_PORT: {influxdb_port}")
-    logging.debug(f"DOCKER_INFLUXDB_INIT_ORG: {influxdb_org}")
-
-    if not influxdb_host or not influxdb_port or not influxdb_org or not influxdb_token:
-        raise RuntimeError("Influxdb environment is not complete! Ensure .env is configured and passed properly")
-
-    Config.influxdb_client = InfluxDBClient(
-        f"http://{influxdb_host}:{influxdb_port}",
-        org=influxdb_org,
-        token=influxdb_token
+    color_formatter = colorlog.ColoredFormatter(
+        '%(log_color)s%(levelname)-8s%(reset)s - %(message)s', 
+        reset=True,
+        log_colors={
+            'DEBUG': 'cyan',
+            'INFO': 'green',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'bold_red',
+        }
     )
 
-    Config.docker_client = docker.from_env()
+    console_handler.setFormatter(color_formatter)
 
-    process_metadata = []
-    process_ids = []
-    for process_config in Config.options.get("processes", []):
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+    logger.addHandler(console_handler)
 
-        if "id" not in process_config.keys():
-            raise RuntimeError("id field required for each process")
+    yaml_options = None
+    with open(str(args.config), 'r') as file:
+        yaml_options = yaml.safe_load(file)
 
-        if "type" not in process_config.keys():
-            raise RuntimeError("type field required for each process")
+    if yaml_options is None:
+        logging.critical("YAML parsing failed")
+        sys.exit(1)
+    return yaml_options
 
-        if "config_file" not in process_config.keys():
-            raise RuntimeError("config_file field required for each process")
-
-        process_config["config_file"] = os.path.join("/host",process_config["config_file"])
-        if not os.path.exists(process_config["config_file"]):
-            logging.warning(f"File {process_config['config_file']} not found searching root")
-            config_basename = process_config["config_file"].split("/")[-1]
-            found = False
-            for root, _, files in os.walk("/host"):
-                if config_basename in files:
-                    process_config["config_file"] = os.path.join(root, config_basename)
-                    logging.info(f"Found config file {process_config['config_file']}")
-                    found = True
-                    break
-            if not found:
-                raise RuntimeError(f"config file {process_config['config_file']} not found")
-        process_config["config_file"] = process_config["config_file"].replace("/host", os.getenv("DOCKER_SYSTEM_DIRECTORY"))
-        logging.debug(f"Filename on host {process_config['config_file']}")
-
-
-        if "depends_on" in process_config.keys():
-            depends_on_list = list(process_config["depends_on"])
-            for dependency in depends_on_list:
-                found_dep = False
-                for process_data in process_metadata:
-                    if process_data["id"] == dependency:
-                        found_dep = True
-                if not found_dep:
-                    raise RuntimeError(f"Did not find dependent process '{dependency}' for '{process_config['id']}'")
-
-        permissions = []
-        if "permissions" in process_config.keys():
-            permissions = process_config["permissions"]
-        process_config["permissions"] = permissions
-
-        process_class = None
-        try:
-            process_class = globals()[process_config["type"]]
-        except KeyError:
-            raise RuntimeError(f"Invalid process type {process_config['type']}")
-
-        process_handle = process_class(Config.influxdb_client, Config.docker_client, process_config)
-        process_token = None
-        if hasattr(process_handle, "get_token"):
-            process_token = process_handle.get_token()
-
-        process_metadata.append({
-            'id': process_config['id'],
-            'type': process_config['type'],
-            'config': process_config,
-            'handle': process_handle,
-            'token': {process_token: permissions}
-        })
-        process_handle.start()
-
-        if "sleep_ms" in process_config.keys():
-            logging.debug(f"Sleeping for {process_config['sleep_ms']}")
-            sleep_time = float(process_config["sleep_ms"])/1000.0
-            time.sleep(sleep_time)
-
-    for obj in process_metadata:
-        logging.debug(f"{obj['id']} {obj['token']}")
-    return process_metadata
-
+def start_server():
+    server = http.server.HTTPServer(("0.0.0.0", 1343), SystemControlHandler)
+    logging.info("Starting control server at: http://controller:1343")
+    server.serve_forever()
 
 
 if __name__ == '__main__':
+    if os.geteuid() != 0:
+        logging.critical("User must be root")
+        sys.exit(1) 
+
     Globals.controller_init_time = f"{datetime.now().astimezone(timezone.utc)
         .isoformat().replace("+00:00", "Z")}"
 
-    if os.geteuid() != 0:
-        logging.error("The RAN Tester UE controller must be run as root.")
-        sys.exit(1)
+    yaml_config = configure()
 
-    control_ip = os.getenv("DOCKER_CONTROLLER_API_IP", None)
-    if not control_ip:
-        raise RuntimeError("environment variable DOCKER_CONTROLLER_API_IP not set")
-        sys.exit(1)
+    for target_config in yaml_config.get("external_targets", []):
+        target_name = target_config.get("name", None)
+        target_host = target_config.get("host", None)
+        target_token = target_config.get("token", None)
+        target_port = target_config.get("port", None)
+        if target_name is None or target_host is None or target_token is None or not isinstance(target_port, int):
+            logging.warning("Skipping external target due to insufficient configuration")
+            continue
+        Globals.target_managers[target_name] = ApiInterface(target_host, target_port, target_token)
 
-    control_port = os.getenv("DOCKER_CONTROLLER_API_PORT", None)
-    if not control_port:
-        raise RuntimeError("environment variable DOCKER_CONTROLLER_API_PORT not set")
-        sys.exit(1)
-    try:
-        control_port = int(control_port)
-    except RuntimeError:
-        raise RuntimeError("DOCKER_CONTROLLER_API_PORT is not a valid integer")
+    Globals.api_auth = yaml_config.get("api_auth", [])
+    for i in range(len(Globals.api_auth)):
+        if Globals.api_auth[i].get("token") is None:
+            Globals.api_auth[i]["token"] = uuid.uuid4()
 
+    external_influx_config = yaml_config.get("external_influx", None)
+    Globals.thread_manager = ComponentManager(external_influx_config, yaml_config.get("exit_on_component_failure", False))
 
-    configure()
-    Globals.process_metadata = start_subprocess_threads()
+    build_config = yaml_config.get("build_spec", [])
+    threads_config = yaml_config.get("run_spec", [])
 
-    server = http.server.HTTPServer((control_ip, control_port), SystemControlHandler)
+    for b in build_config:
+        if b.get("force_rebuild", False):
+            Globals.thread_manager.build(b)
+        else:
+            Globals.thread_manager.build_if_not_exists(b)
 
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.load_cert_chain(certfile="/server.pem", keyfile="/server.key")
-    server.socket = context.wrap_socket(server.socket, server_side=True)
+    if yaml_config.get("autorun", True):
+        for t in threads_config:
+            if t.get("target", False):
+                Globals.thread_manager.start_external(t)
+                continue
+            Globals.thread_manager.start(t)
 
-    logging.debug(f"control API setup on https://{control_ip}:{control_port}")
+    if yaml_config.get("enable_cli", False):
+        server_thread = threading.Thread(target=start_server, daemon=True)
+        server_thread.start()
+        time.sleep(1)
+        cli_manager = CLIManager(yaml_config)
+        cli_manager.cli_loop()
+    else:
+        server_thread = threading.Thread(target=start_server, daemon=True)
+        server_thread.start()
 
-    server.serve_forever()
+        time.sleep(0.2)
+        while len(Globals.thread_manager.process_metadata) > 0:
+            time.sleep(0.2)
+
+        sys.exit(0)

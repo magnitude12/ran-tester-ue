@@ -1,11 +1,13 @@
 import asyncio
+import sys
+import hashlib
 import configparser
 import logging
 import os
 import threading
 import time
 import uuid
-from datetime import datetime
+import datetime
 from enum import Enum
 
 import docker
@@ -14,6 +16,7 @@ from docker.types import IPAMConfig, IPAMPool
 from influxdb_client import InfluxDBClient, WriteApi
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+from globals import Globals
 
 class RfType(Enum):
     NONE = 0
@@ -42,6 +45,8 @@ class WorkerThreadConfig:
 
 class WorkerThread:
     def __init__(self, influxdb_client, docker_client, process_config):
+        self.exit_code : int | None = None
+        self.influxdb_metadata = process_config.get("influxdb_metadata", {})
         self.docker_container = None
         self.docker_logs = None
         self.config = WorkerThreadConfig()
@@ -51,10 +56,11 @@ class WorkerThread:
         if "config_file" in process_config.keys():
             self.config.config_file = process_config["config_file"]
 
-        if "id" in process_config.keys():
-            self.config.container_id = process_config["id"]
+        if "name" in process_config.keys():
+            self.config.container_id = process_config["name"]
         else:
-            raise RuntimeError("Process id is required")
+            logging.critical("Process id is required")
+            sys.exit(1)
 
         if "args" in process_config.keys():
             self.config.cli_args = process_config["args"]
@@ -131,6 +137,11 @@ class WorkerThread:
 
     def setup_env(self):
         self.config.container_env["ARGS"] = " ".join(self.config.cli_args)
+        self.config.container_env["INFLUX_PORT"] = self.influxdb_metadata.get("port")
+        self.config.container_env["INFLUX_HOST"] = self.influxdb_metadata.get("host")
+        self.config.container_env["INFLUX_ORG"] = self.influxdb_metadata.get("org")
+        self.config.container_env["INFLUX_TOKEN"] = self.influxdb_metadata.get("token")
+
         if self.config.rf_type == RfType.B200:
             self.config.container_env["UHD_IMAGES_DIR"] = "/usr/local/share/uhd"
 
@@ -138,6 +149,35 @@ class WorkerThread:
         self.config.container_networks.append(
             self.config.docker_client.networks.get("rt_metrics")
         )
+<<<<<<< HEAD
+=======
+        for api in Globals.api_auth:
+            if self.config.container_id not in api.get("pass_to", []):
+                continue
+
+            api_scopes = api.get("scopes", None)
+            api_allowed_components = api.get("allowed_components", None)
+            api_name = api.get("name", None)
+            api_token = api.get("token", None)
+
+            if api_scopes is None or api_name is None or not isinstance(api_scopes, list) or api_token is None:
+                logging.warning("Skipping API auth due to insufficient configuration")
+                continue
+
+            if "start" in api_scopes and (api_allowed_components is None or not isinstance(api_allowed_components, list)):
+                logging.warning("allowed_components are required when start scope is enabled")
+                continue
+
+            logging.info(f"Adding control API access to container {self.config.container_id}")
+            self.config.container_networks.append(
+                self.config.docker_client.networks.get("rt_control")
+            )
+
+            self.config.container_env["CONTROL_TOKEN"] = api_token
+            self.config.container_env["CONTROL_HOST"] = "controller"
+            self.config.container_env["CONTROL_PORT"] = "1343"
+
+>>>>>>> joshuamoorexyz-main
 
         if self.config.rf_type == RfType.ZMQ:
             try:
@@ -195,10 +235,16 @@ class WorkerThread:
 
         self.stop_thread = threading.Event()
         self.log_thread = threading.Thread(target=self.log_report_thread, daemon=True)
+        self.watch_thread = threading.Thread(target=self.container_watch_thread, daemon=True)
         self.log_thread.start()
+<<<<<<< HEAD
+=======
+        self.watch_thread.start()
+>>>>>>> joshuamoorexyz-main
 
     def start(self):
-        raise RuntimeError("start behavior must be defined by individual worker class")
+        logging.critical("start behavior must be defined by individual worker class")
+        sys.exit(1)
 
     def stop(self):
         """
@@ -236,7 +282,7 @@ class WorkerThread:
             write_options=SYNCHRONOUS
         ) as write_api:
             try:
-                utc_timestamp = datetime.utcnow()
+                utc_timestamp = datetime.datetime.now(datetime.UTC)
                 formatted_timestamp = utc_timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
                 self.influx_push(
                     write_api,
@@ -252,7 +298,11 @@ class WorkerThread:
                         "time": formatted_timestamp,
                     },
                 )
-                logging.debug(f"[{self.config.container_id}]: {message_text}")
+ 
+                color_code = int(hashlib.md5(self.config.container_id.encode()).hexdigest(), 16) % 8 + 30
+                tag_color = f"\033[{color_code}m"
+
+                logging.debug(f"{tag_color}[{self.config.container_id}]\033[0m: {message_text}")
             except Exception as e:
                 logging.error(f"send_message failed with error: {e}")
 
@@ -276,3 +326,16 @@ class WorkerThread:
                 line = str(line[0])
 
             self.send_message(line.strip())
+
+    def container_watch_thread(self):
+        try:
+            result = self.docker_container.wait()  # BLOCKS
+            self.exit_code = result.get("StatusCode")
+            logging.info(
+                f"Component {self.config.container_id} exited with code {self.exit_code}"
+            )
+        except Exception as e:
+            logging.error(f"Error waiting for container: {e}")
+            self.exit_code = -1
+        finally:
+            self.stop_thread.set()

@@ -1,0 +1,12 @@
+external_targets:
+  - name: "sni5gect_runner"
+    token: "testing_token"
+    host: "192.168.0.10"
+    port: 1343
+
+run_spec:
+  - component: "uu_agent"
+    name: "uuagent_uhd_1"
+    config_file: "configs/uuagent/gnb_test.conf"
+    rf:
+      type: "b200"

@@ -1,0 +1,29 @@
+api_auth:
+  - name: "control_api_check_auth"
+    token: "verification_token"
+    scopes:
+      - list
+    allowed_components:
+      - sni5gect
+      - rtue
+      - jammer
+      - ssb-spoofer
+    pass_to:
+      - control_api_check
+
+build_spec:
+  - component: "cueltschey/rt-env-test"
+    branch: "main"
+    pull: false
+
+
+run_spec:
+  - component: "cueltschey/rt-env-test"
+    config_file: "spec.yaml"
+    name: "control_api_check"
+    args:
+      - "--check-env CONTROL_HOST=controller"
+      - "--check-env CONTROL_PORT=1343"
+      - "--check-control-api"
+    rf:
+      type: "none"
