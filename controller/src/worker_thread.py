@@ -1,13 +1,20 @@
 import asyncio
+<<<<<<< HEAD
 import sys
 import hashlib
+=======
+>>>>>>> 9596f974 (uhd images configuration fixes)
 import configparser
 import logging
 import os
 import threading
 import time
 import uuid
+<<<<<<< HEAD
 import datetime
+=======
+from datetime import datetime
+>>>>>>> 9596f974 (uhd images configuration fixes)
 from enum import Enum
 
 import docker
@@ -16,8 +23,11 @@ from docker.types import IPAMConfig, IPAMPool
 from influxdb_client import InfluxDBClient, WriteApi
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+<<<<<<< HEAD
 from globals import Globals
 
+=======
+>>>>>>> 9596f974 (uhd images configuration fixes)
 
 class RfType(Enum):
     NONE = 0
@@ -150,7 +160,6 @@ class WorkerThread:
         self.config.container_networks.append(
             self.config.docker_client.networks.get("rt_metrics")
         )
-
         for api in Globals.api_auth:
             if self.config.container_id not in api.get("pass_to", []):
                 continue
@@ -241,6 +250,7 @@ class WorkerThread:
     def start(self):
         logging.critical("start behavior must be defined by individual worker class")
         sys.exit(1)
+
 
     def stop(self):
         """
