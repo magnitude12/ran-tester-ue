@@ -68,14 +68,12 @@ services:
        - influxdb
 
   ofh_attacker:
-    image: ghcr.io/oran-testing/ofh
+    # image: ghcr.io/oran-testing/ofh
     build:
       context: ./ofh/
       dockerfile: Dockerfile.alpine
     env_file:
       - .env
-    volumes:
-      - /tmp:/tmp
     network_mode: host
     profiles:
       - components
