@@ -78,9 +78,7 @@ def configure():
 def start_server():
     server = http.server.HTTPServer(("0.0.0.0", 1343), SystemControlHandler)
     logging.info("Starting control server at: http://controller:1343")
-
     server.serve_forever()
-
 
 
 if __name__ == '__main__':
