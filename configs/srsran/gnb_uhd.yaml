@@ -16,7 +16,7 @@ ru_sdr:
   device_args: type=b200,serial=32C751C
   clock: external
   srate: 23.04
-  tx_gain: 80
+  tx_gain: 70
   rx_gain: 40
 
 cell_cfg:
@@ -43,6 +43,7 @@ cell_cfg:
 log:
   filename: /tmp/gnb.log
   all_level: info
+  rrc_level: none
 
 pcap:
   mac_enable: enable
