@@ -372,18 +372,20 @@ class ComponentManager:
         logging.info(f"Running command: {' '.join(buildx_command)}")
 
         try:
-            process = subprocess.Popen(buildx_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            process = subprocess.Popen(
+                buildx_command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
 
-            for stdout_line in iter(process.stdout.readline, ""):
-                logging.debug(stdout_line.strip())
-            for stderr_line in iter(process.stderr.readline, ""):
-                logging.debug(stderr_line.strip())
+            for line in iter(process.stdout.readline, ""):
+                logging.debug(line.rstrip())
 
             process.stdout.close()
-            process.stderr.close()
 
             return_code = process.wait()
-
             if return_code != 0:
                 raise RuntimeError(f"Buildx build failed with exit code {return_code}")
 
