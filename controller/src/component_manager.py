@@ -372,18 +372,20 @@ class ComponentManager:
         logging.info(f"Running command: {' '.join(buildx_command)}")
 
         try:
-            process = subprocess.Popen(buildx_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            process = subprocess.Popen(
+                buildx_command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
 
-            for stdout_line in iter(process.stdout.readline, ""):
-                logging.debug(stdout_line.strip())
-            for stderr_line in iter(process.stderr.readline, ""):
-                logging.debug(stderr_line.strip())
+            for line in iter(process.stdout.readline, ""):
+                logging.debug(line.rstrip())
 
             process.stdout.close()
-            process.stderr.close()
 
             return_code = process.wait()
-
             if return_code != 0:
                 raise RuntimeError(f"Buildx build failed with exit code {return_code}")
 
@@ -393,6 +395,7 @@ class ComponentManager:
             raise RuntimeError(f"Buildx build failed: {e.stderr}")
 
     def _load_worker_thread_from_url(self, url: str, component_path):
+        logging.debug(f"Loading worker thread from {url}")
         response = requests.get(url)
         if response.status_code != 200:
             logging.critical(
@@ -402,6 +405,7 @@ class ComponentManager:
             sys.exit(1)
 
         code = response.text
+        logging.debug(f"Got worker thread:\n {code}")
 
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp_file:
             tmp_file.write(code)
@@ -413,6 +417,8 @@ class ComponentManager:
         spec.loader.exec_module(module)
 
         for _, cls in inspect.getmembers(module, inspect.isclass):
+            if cls.__name__ in ["WorkerThread", "ComponentManager"]:
+                continue
             logging.info(f"Loaded worker class {cls.__name__} from {url}")
             Globals.worker_thread_registry[component_path] = cls
             return cls
