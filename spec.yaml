@@ -3,22 +3,31 @@ enable_cli: true
 build_spec:
   - component: "cueltschey/sni5gect-compact"
     branch: "iq_file"
-    pull: false
+    pull: true
 
   - component: "oran-testing/ssb-spoofer"
     branch: "autoconfiguration"
-    pull: false
+    pull: true
+
+  - component: "oran-testing/uu-agent"
+    pull: true
 
 run_spec:
   - component: "cueltschey/sni5gect-compact"
     worker_thread: "sni5gect"
-    name: "demo_sniffer_01"
-    config_file: "configs/sni5gect/basic_file_test.yaml"
+    name: "results_rectest_01"
+    config_file: "configs/sni5gect/srsgnb_band3.yaml"
     rf:
-      type: "none"
+      type: "b200"
 
   - component: "oran-testing/ssb-spoofer"
-    name: "demo_spoofer_01"
+    name: "results_ssb_spoofer_02"
     config_file: "configs/ssb_spoofer/config_auto.yaml"
     rf:
-      type: "none"
+      type: "b200"
+
+  - component: "oran-testing/uu-agent"
+    name: "results_uuagent_03"
+    config_file: "configs/uuagent/basic_iq_collection.yaml"
+    rf:
+      type: "b200"
