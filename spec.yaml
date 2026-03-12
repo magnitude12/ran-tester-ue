@@ -1,63 +1,24 @@
-# Testing API authentication for control_api_check
-exit_on_component_failure: true
-api_auth:
-  - name: "control_api_check_auth"
-    token: "verification_token"
-    scopes:
-      - list
-    allowed_components:
-      - sni5gect
-      - rtue
-      - jammer
-      - ssb-spoofer
-    pass_to:
-      - control_api_check
+enable_cli: true
 
 build_spec:
-  - component: "cueltschey/rt-env-test"
-    branch: "main"
+  - component: "cueltschey/sni5gect-compact"
+    branch: "iq_file"
     pull: false
 
+  - component: "oran-testing/ssb-spoofer"
+    branch: "autoconfiguration"
+    pull: false
 
 run_spec:
-  - component: "cueltschey/rt-env-test"
-    config_file: "spec.yaml"
-    name: "rf_device_check"
-    args:
-      - "--images-dir /usr/local/share/uhd"
-      - "--check-env UHD_IMAGES_DIR=/usr/local/share/uhd"
-      - "--check-usb"
-    rf:
-      type: "b200"
-
-  - component: "cueltschey/rt-env-test"
-    config_file: "spec.yaml"
-    name: "volumes_check"
-    args:
-      - "--check-config /test.yaml"
-      - "--check-env CONFIG=/test.yaml"
+  - component: "cueltschey/sni5gect-compact"
+    worker_thread: "sni5gect"
+    name: "demo_sniffer_01"
+    config_file: "configs/sni5gect/basic_file_test.yaml"
     rf:
       type: "none"
 
-  - component: "cueltschey/rt-env-test"
-    config_file: "spec.yaml"
-    name: "influx_check"
-    args:
-      - "--check-env INFLUX_HOST=influxdb"
-      - "--check-env INFLUX_PORT=8086"
-      - "--check-env INFLUX_ORG=rtu"
-      - "--check-env INFLUX_TOKEN"
-      - "--check-influxdb"
-      - "--influx-bucket rtusystem"
-    rf:
-      type: "none"
-
-  - component: "cueltschey/rt-env-test"
-    config_file: "spec.yaml"
-    name: "control_api_check"
-    args:
-      - "--check-env CONTROL_HOST=controller"
-      - "--check-env CONTROL_PORT=1343"
-      - "--check-control-api"
+  - component: "oran-testing/ssb-spoofer"
+    name: "demo_spoofer_01"
+    config_file: "configs/ssb_spoofer/config_auto.yaml"
     rf:
       type: "none"

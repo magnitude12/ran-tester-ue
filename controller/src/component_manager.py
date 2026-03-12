@@ -395,6 +395,7 @@ class ComponentManager:
             raise RuntimeError(f"Buildx build failed: {e.stderr}")
 
     def _load_worker_thread_from_url(self, url: str, component_path):
+        logging.debug(f"Loading worker thread from {url}")
         response = requests.get(url)
         if response.status_code != 200:
             logging.critical(
@@ -404,6 +405,7 @@ class ComponentManager:
             sys.exit(1)
 
         code = response.text
+        logging.debug(f"Got worker thread:\n {code}")
 
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp_file:
             tmp_file.write(code)
@@ -415,6 +417,8 @@ class ComponentManager:
         spec.loader.exec_module(module)
 
         for _, cls in inspect.getmembers(module, inspect.isclass):
+            if cls.__name__ in ["WorkerThread", "ComponentManager"]:
+                continue
             logging.info(f"Loaded worker class {cls.__name__} from {url}")
             Globals.worker_thread_registry[component_path] = cls
             return cls
