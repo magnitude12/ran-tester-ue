@@ -79,7 +79,7 @@ jobs:
         run: |
           docker rm -f srsgnb-ci >/dev/null 2>&1 || true
           docker network inspect rt_zmq >/dev/null 2>&1 || \
-            docker network create --subnet 172.22.0.0/24 --gateway 172.22.0.1 rt_zmq
+            docker network create --subnet 172.22.0.0/24 --gateway 172.22.0.254 rt_zmq
 
           docker run -d \
             --name srsgnb-ci \
