@@ -105,7 +105,21 @@ jobs:
       - name: Run system test
         run: |
           sed -i "s|DOCKER_CONTROLLER_INIT_CONFIG=.*|DOCKER_CONTROLLER_INIT_CONFIG=${{ matrix.system_test_config }}|g" .env
-          docker compose up --abort-on-container-exit --exit-code-from controller
+
+          if [ "${{ matrix.system_test_config }}" = "configs/system_tests/zmq_rtue_ci.yaml" ]; then
+            # rtue in this ZMQ scenario is expected to stay alive; bound runtime and verify attach via logs.
+            set +e
+            timeout 180 docker compose up --abort-on-container-exit --exit-code-from controller
+            compose_rc=$?
+            set -e
+
+            if [ "$compose_rc" -ne 0 ] && [ "$compose_rc" -ne 124 ]; then
+              echo "ZMQ compose run failed with unexpected code: $compose_rc"
+              exit "$compose_rc"
+            fi
+          else
+            docker compose up --abort-on-container-exit --exit-code-from controller
+          fi
 
       - name: Verify ZMQ UE connection in gNB logs
         if: always() && matrix.system_test_config == 'configs/system_tests/zmq_rtue_ci.yaml'
