@@ -71,6 +71,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y uhd-host
 
+      - name: Install gNB emulation dependency
+        if: matrix.system_test_config == 'configs/system_tests/zmq_rtue_ci.yaml'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
       - name: Run system setup
         run: ./scripts/system_setup.sh --no-confirm
 
@@ -86,12 +92,13 @@ jobs:
             --network rt_zmq \
             --ip 172.22.0.1 \
             --privileged \
+            -v /usr/bin/qemu-x86_64-static:/usr/bin/qemu-x86_64-static:ro \
             -v "${GITHUB_WORKSPACE}/configs/srsran/gnb_zmq_docker.yaml:/gnb.yaml:ro" \
             ghcr.io/cueltschey/srsgnb \
-            sh -lc "gnb -c /gnb.yaml"
+            sh -lc "qemu-x86_64-static /usr/local/bin/gnb -c /gnb.yaml"
 
           # Give gNB/open5gs stack time to initialize before starting the UE.
-          sleep 20
+          sleep 40
           docker logs srsgnb-ci --tail 100 || true
 
       #- name: Download Docker image artifact
